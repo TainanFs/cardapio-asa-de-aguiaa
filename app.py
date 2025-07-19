@@ -13,42 +13,31 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# --- FUNÇÃO E CÓDIGO PARA IMAGEM DE FUNDO ---
-@st.cache_data
-def get_img_as_base64(file):
-    """Lê uma imagem e a converte para base64."""
-    try:
-        with open(file, "rb") as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-    except FileNotFoundError:
-        # Não exibe erro se o arquivo não for encontrado, apenas retorna None
-        return None
+# --- CÓDIGO PARA IMAGEM DE FUNDO (MÉTODO COM URL DIRETA) ---
 
-img = get_img_as_base64("background.jpg")
+# URL pública da imagem no seu repositório do GitHub
+image_url = "https://raw.githubusercontent.com/Tainanfs1/cardapio-asa-de-aguiaa/main/background.jpg"
 
-if img:
-    page_bg_img = f"""
-    <style>
-    [data-testid="stAppViewContainer"] > .main {{
-    background-image: url("data:image/jpeg;base64,{img}");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: local;
-    }}
-    [data-testid="stSidebar"] > div:first-child {{
-    background-color: rgba(40, 40, 40, 0.8); /* Fundo do sidebar mais escuro */
-    }}
-    [data-testid="stHeader"], [data-testid="stToolbar"] {{
-    background: rgba(0,0,0,0);
-    }}
-    .st-emotion-cache-16txtl3 {{ /* Estilo para os titulos de abas */
-        color: white;
-    }}
-    </style>
-    """
-    st.markdown(page_bg_img, unsafe_allow_html=True)
+# Monta o CSS para usar a imagem diretamente da URL
+page_bg_img = f"""
+<style>
+[data-testid="stAppViewContainer"] > .main {{
+background-image: url("{image_url}");
+background-size: cover;
+background-position: center;
+background-repeat: no-repeat;
+background-attachment: local;
+}}
+[data-testid="stSidebar"] > div:first-child {{
+background-color: rgba(40, 40, 40, 0.8);
+}}
+[data-testid="stHeader"], [data-testid="stToolbar"] {{
+background: rgba(0,0,0,0);
+}}
+/* Adicione outras customizações de estilo aqui se desejar */
+</style>
+"""
+st.markdown(page_bg_img, unsafe_allow_html=True)
 
 # --- LÓGICA DE CONEXÃO "INTELIGENTE" E MAIS ROBUSTA COM O BANCO DE DADOS ---
 try:
