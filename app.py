@@ -208,10 +208,101 @@ else:
         st.error(f"Erro ao carregar dados do cardápio: {e}")
         st.stop()
 
+    # PAINEL DO ADMIN (SUBSTITUA POR ESTE BLOCO COMPLETO)
     if st.session_state.get('role') == 'admin':
         st.title("⚙️ Painel do Administrador")
-        st.write("Bem-vindo, admin! Funcionalidades de gerenciamento de produtos e usuários a serem implementadas.")
 
+        # Usar abas para organizar o painel
+        tab_produtos, tab_opcoes, tab_usuarios = st.tabs(["Produtos", "Opções", "Usuários"])
+
+        with tab_produtos:
+            st.header("Gerenciamento de Produtos")
+
+            # --- Formulário para Adicionar Novo Produto ---
+            with st.expander("➕ Adicionar Novo Produto", expanded=False):
+                with st.form(key="add_product_form", clear_on_submit=True):
+                    st.subheader("Detalhes do Novo Produto")
+                    nome_produto = st.text_input("Nome do Produto (Ex: X-Tudo)")
+                    categoria_produto = st.selectbox("Categoria", ["Sanduíches", "Bebidas", "Cremes"], key="cat_prod")
+                    preco_base_produto = st.number_input("Preço Base (R$)", format="%.2f", step=0.50, min_value=0.0)
+                    
+                    st.write("Configurações de Opcionais:")
+                    permite_carne = st.checkbox("Este produto permite escolher carnes?", key="p_carne")
+                    permite_adicional = st.checkbox("Este produto permite adicionais (ex: polpa)?", key="p_adic")
+                    
+                    submit_button = st.form_submit_button(label="Adicionar Produto")
+
+                    if submit_button:
+                        if nome_produto and categoria_produto:
+                            produto_data = {
+                                "nome": nome_produto,
+                                "preco_base": preco_base_produto,
+                                "categoria": categoria_produto,
+                                "permite_carne": permite_carne,
+                                "permite_adicional": permite_adicional,
+                                "disponivel": True  # Sempre começa como disponível
+                            }
+                            db.collection("produtos").add(produto_data)
+                            st.success(f"Produto '{nome_produto}' adicionado com sucesso!")
+                            st.rerun() # Recarrega a página para mostrar o novo produto na lista
+                        else:
+                            st.warning("Nome e Categoria são obrigatórios.")
+
+            st.write("---")
+            st.header("Lista de Produtos Cadastrados")
+
+            # --- Lógica para Listar e Editar Produtos ---
+            try:
+                todos_produtos_ref = db.collection("produtos").stream()
+                lista_produtos = [p for p in todos_produtos_ref] # Materializa a lista
+
+                if not lista_produtos:
+                    st.info("Nenhum produto cadastrado ainda.")
+                else:
+                    for produto in lista_produtos:
+                        p_data = produto.to_dict()
+                        p_id = produto.id
+
+                        col1, col2, col3 = st.columns([2, 1, 1])
+                        
+                        with col1:
+                            st.subheader(p_data.get("nome", "Nome não encontrado"))
+                            st.write(f"Categoria: **{p_data.get('categoria')}** | Preço: **R$ {p_data.get('preco_base', 0):.2f}**")
+
+                        with col2:
+                            # Lógica para editar - aqui usamos um formulário dentro de um st.popover
+                            with st.popover("✏️ Editar"):
+                                with st.form(key=f"edit_{p_id}"):
+                                    st.subheader(f"Editando: {p_data.get('nome')}")
+                                    novo_nome = st.text_input("Novo nome", value=p_data.get("nome"), key=f"name_{p_id}")
+                                    novo_preco = st.number_input("Novo Preço Base (R$)", value=p_data.get("preco_base"), format="%.2f", step=0.50, min_value=0.0, key=f"price_{p_id}")
+                                    
+                                    if st.form_submit_button("Salvar Alterações"):
+                                        update_data = {"nome": novo_nome, "preco_base": novo_preco}
+                                        db.collection("produtos").document(p_id).update(update_data)
+                                        st.success("Produto atualizado!")
+                                        st.rerun()
+                        
+                        with col3:
+                            # Lógica para ativar/desativar
+                            disponivel = p_data.get("disponivel", True)
+                            if disponivel:
+                                if st.button("Tornar Indisponível", key=f"off_{p_id}", type="secondary"):
+                                    db.collection("produtos").document(p_id).update({"disponivel": False})
+                                    st.rerun()
+                            else:
+                                if st.button("✅ Tornar Disponível", key=f"on_{p_id}", type="primary"):
+                                    db.collection("produtos").document(p_id).update({"disponivel": True})
+                                    st.rerun()
+
+            except Exception as e:
+                st.error(f"Erro ao buscar produtos: {e}")
+
+        with tab_opcoes:
+            st.info("A funcionalidade de gerenciamento de Opções (carnes, polpas) será implementada aqui.")
+
+        with tab_usuarios:
+            st.info("A funcionalidade de gerenciamento de Usuários (garçom, caixa) será implementada aqui.")
     elif st.session_state.get('role') == 'garcom':
         render_order_placement_screen(db, all_products, all_opcoes)
 
