@@ -6,21 +6,37 @@ from datetime import datetime, time
 
 # --- FUNÇÃO PARA A IMAGEM DE FUNDO ---
 
+import streamlit as st
+import base64
+import os
+
 @st.cache_data
 def get_img_as_base64(file):
-    """Lê um arquivo de imagem e o converte para o formato base64."""
+    """
+    Lê um arquivo de imagem e o converte para o formato base64.
+    Isso é útil para embutir imagens diretamente no CSS.
+    """
     try:
+        # Abre o arquivo em modo de leitura de bytes ('rb')
         with open(file, "rb") as f:
             data = f.read()
+        # Codifica os bytes para base64 e decodifica para uma string de texto
         return base64.b64encode(data).decode()
     except FileNotFoundError:
-        st.error(f"Arquivo de imagem de fundo '{file}' não encontrado. Verifique o nome e o local.")
+        st.error(f"Arquivo de imagem de fundo '{file}' não encontrado.")
         return None
 
-# Use o nome exato do seu arquivo de imagem
-img = get_img_as_base64("background.jpg")
+# --- LÓGICA PRINCIPAL ---
 
+# Nome do seu arquivo de imagem
+image_file = "background.jpg"
+
+# Chama a função para obter a imagem como texto base64
+img = get_img_as_base64(image_file)
+
+# Apenas continua se a imagem foi encontrada e carregada com sucesso
 if img:
+    # Cria o código CSS usando uma f-string do Python
     page_bg_img = f"""
     <style>
     [data-testid="stAppViewContainer"] > .main {{
@@ -30,17 +46,15 @@ if img:
     background-repeat: no-repeat;
     background-attachment: fixed;
     }}
-    /* Para deixar o cabeçalho transparente */
     [data-testid="stHeader"] {{
     background-color: rgba(0, 0, 0, 0);
     }}
-    /* Para dar um leve fundo translúcido à barra lateral */
-    [data-testid="stSidebar"] > div:first-child {{
-    background-color: rgba(38, 39, 48, 0.7);
-    }}
     </style>
     """
+    
+    # Injeta o CSS na página do Streamlit
     st.markdown(page_bg_img, unsafe_allow_html=True)
+
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="Cardápio Asa de Águia",
