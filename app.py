@@ -5,28 +5,17 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 from datetime import datetime, time
 
 # --- FUNÇÃO PARA A IMAGEM DE FUNDO ---
-import streamlit as st
-
-# 1. URL CORRETA (apontando para o arquivo de imagem "cru" e com o nome do repositório corrigido)
-image_url = "https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true"
-
-# 2. CSS CORRIGIDO (sem erros de digitação e com o alvo estável)
+import streamlit as st 
 page_bg_img = f"""
 <style>
-[data-testid="stAppViewContainer"] > .main {{
-background-image: url("{image_url}");
-background-size: cover;
-background-position: center;
-background-repeat: no-repeat;
-background-attachment: fixed;
-}}
-[data-testid="stHeader"] {{
-background-color: rgba(0, 0, 0, 0);
+
+.st-emotion-cache-1yiq2ps {{
+ background-image: url ("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true");
+ background-sioze: cover;
 }}
 </style>
-"""
-
-st.markdown(page_bg_img, unsafe_allow_html=True)
+""
+st.markdown(page_bg_img,unsafe_allow_html=True)
 
 # --- LÓGICA DE CONEXÃO ---
 try:
