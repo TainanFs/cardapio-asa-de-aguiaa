@@ -15,26 +15,22 @@ st.set_page_config(
 
 # --- CÓDIGO PARA IMAGEM DE FUNDO (MÉTODO COM URL DIRETA) ---
 
-# URL pública da imagem no seu repositório do GitHub (CORRIGIDA)
-image_url = "https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg"
+# --- CÓDIGO PARA IMAGEM DE FUNDO (TESTE DE DIAGNÓSTICO) ---
 
-# Monta o CSS para usar a imagem diretamente da URL
+# URL de uma imagem de teste, de um site diferente e confiável.
+test_image_url = "https://i.imgur.com/1v9n51z.jpeg" 
+
+# Monta o CSS para usar a imagem de teste
 page_bg_img = f"""
 <style>
 [data-testid="stAppViewContainer"] > .main {{
-background-image: url("{image_url}");
+background-image: url("{test_image_url}");
 background-size: cover;
 background-position: center;
 background-repeat: no-repeat;
 background-attachment: local;
 }}
-[data-testid="stSidebar"] > div:first-child {{
-background-color: rgba(40, 40, 40, 0.8);
-}}
-[data-testid="stHeader"], [data-testid="stToolbar"] {{
-background: rgba(0,0,0,0);
-}}
-/* Adicione outras customizações de estilo aqui se desejar */
+/* O resto do seu CSS continua aqui */
 </style>
 """
 st.markdown(page_bg_img, unsafe_allow_html=True)
