@@ -50,18 +50,23 @@ if img:
     """
     st.markdown(page_bg_img, unsafe_allow_html=True)
 
-# --- LÓGICA DE CONEXÃO "INTELIGENTE" COM O BANCO DE DADOS ---
-# Esta é a parte corrigida e mais importante
+# --- LÓGICA DE CONEXÃO "INTELIGENTE" E MAIS ROBUSTA COM O BANCO DE DADOS ---
 try:
-    # Se estiver rodando no Streamlit Community Cloud
-    if 'STREAMLIT_SHARING_MODE' in os.environ:
+    # Verificação mais direta: se o objeto 'secrets' existe e contém nossas credenciais
+    if hasattr(st, 'secrets') and "firestore_credentials" in st.secrets:
+        # Mensagem de diagnóstico para sabermos que este bloco foi executado
+        st.success("✅ Tentando conectar usando as credenciais do Streamlit Secrets...") 
         creds_dict = st.secrets["firestore_credentials"]
         db = firestore.Client.from_service_account_info(creds_dict)
-    # Se estiver rodando localmente na sua máquina
+    
+    # Se a verificação acima falhar, ele tentará o método local
     else:
+        # Mensagem de diagnóstico para sabermos que este bloco foi executado
+        st.info("ℹ️ Secrets não encontrados. Tentando conectar usando o arquivo local 'firestore-chave.json'...")
         script_dir = os.path.dirname(os.path.abspath(__file__))
         chave_path = os.path.join(script_dir, "firestore-chave.json")
         db = firestore.Client.from_service_account_json(chave_path)
+
 except Exception as e:
     st.error("🔴 Falha na conexão com o banco de dados.")
     st.error(f"Ocorreu um erro: {e}")
