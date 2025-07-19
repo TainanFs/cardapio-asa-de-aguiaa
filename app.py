@@ -4,7 +4,7 @@ from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 from datetime import datetime, time
 
-# --- CONFIGURAÇÃO DA PÁGINA (Deve ser o primeiro comando Streamlit) ---
+# --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="Cardápio Asa de Águia",
     page_icon="🔥",
@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# --- LÓGICA DE CONEXÃO "INTELIGENTE" E ROBUSTA COM O BANCO DE DADOS ---
+# --- LÓGICA DE CONEXÃO COM O BANCO DE DADOS ---
 try:
     if hasattr(st, 'secrets') and "firestore_credentials" in st.secrets:
         creds_dict = st.secrets["firestore_credentials"]
@@ -24,19 +24,13 @@ try:
 except Exception as e:
     st.error("🔴 Falha na conexão com o banco de dados.")
     st.error(f"Ocorreu um erro: {e}")
-    st.info("Verifique se o arquivo 'firestore-chave.json' está na pasta correta (para execução local) ou se os 'Secrets' foram configurados corretamente no Streamlit Cloud.")
     st.stop()
-
 
 # --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
 if 'logged_in' not in st.session_state:
     st.session_state.update({
-        'logged_in': False,
-        'role': None,
-        'username': None,
-        'cart': [],
-        'table_number': 1,
-        'client_name': ""
+        'logged_in': False, 'role': None, 'username': None, 'cart': [],
+        'table_number': 1, 'client_name': ""
     })
 
 # --- FUNÇÕES DE LÓGICA E TELAS ---
@@ -51,8 +45,9 @@ def check_login(username, password):
     return False, None
 
 def render_order_placement_screen(db, all_products, all_opcoes):
-    """Renderiza a tela completa de lançamento de pedidos, com lógica para todos os produtos."""
+    """Renderiza a tela completa de lançamento de pedidos."""
     st.title(f"👨‍🍳 Lançar Pedido - {st.session_state.get('username')}")
+
     tipo_comanda = st.radio("Tipo de Comanda:", ["Mesa", "Cliente"], horizontal=True, key="tipo_comanda_launcher")
     identificador_comanda = ""
     if tipo_comanda == "Mesa":
@@ -66,7 +61,6 @@ def render_order_placement_screen(db, all_products, all_opcoes):
     tab_sanduiches, tab_cremes, tab_bebidas = st.tabs(["🍔 Sanduíches", "🍨 Cremes", "🥤 Bebidas"])
 
     with tab_sanduiches:
-        # Lógica completa para Sanduíches
         st.subheader("Montar Sanduíche")
         sanduiches_base = [p for p in all_products if p.get('categoria') == 'Sanduíches']
         if not sanduiches_base:
@@ -75,17 +69,28 @@ def render_order_placement_screen(db, all_products, all_opcoes):
             base_nome = st.selectbox("Escolha o sanduíche:", [s['nome'] for s in sanduiches_base], key="sb_base_launcher")
             base_selecionada = next((s for s in sanduiches_base if s['nome'] == base_nome), None)
             if base_selecionada:
-                nome_final_sb = base_nome
+                nome_final_sb = base_selecionada['nome']
                 preco_final_sb = base_selecionada.get('preco_base', 0)
                 if base_selecionada.get('permite_carne'):
                     carnes_disponiveis = [o for o in all_opcoes if o.get('tipo') == 'Carne']
                     if carnes_disponiveis:
-                        nomes_carnes_selecionadas = st.multiselect("Escolha as carnes:", [c['nome_opcao'] for c in carnes_disponiveis], key="sb_carnes_launcher")
-                        if nomes_carnes_selecionadas:
-                            carnes_selecionadas_info = [c for c in carnes_disponiveis if c['nome_opcao'] in nomes_carnes_selecionadas]
-                            for carne_info in carnes_selecionadas_info:
-                                preco_final_sb += carne_info.get('preco_adicional', 0)
-                            nome_final_sb += f" com {' e '.join(nomes_carnes_selecionadas)}"
+                        nomes_carnes = [c['nome_opcao'] for c in carnes_disponiveis]
+                        opcoes_carne_primaria = ["Nenhuma"] + nomes_carnes
+                        carne_primaria_nome = st.selectbox("Escolha a carne principal:", opcoes_carne_primaria, key="sb_carne_primaria_launcher")
+                        if carne_primaria_nome != "Nenhuma":
+                            carne_primaria_info = next((c for c in carnes_disponiveis if c['nome_opcao'] == carne_primaria_nome), None)
+                            if carne_primaria_info:
+                                preco_final_sb += carne_primaria_info.get('preco_adicional', 0)
+                                nome_final_sb += f" com {carne_primaria_nome}"
+                            st.write("---")
+                            nomes_carnes_secundarias = [c for c in nomes_carnes if c != carne_primaria_nome]
+                            opcoes_carne_secundaria = ["Nenhuma"] + nomes_carnes_secundarias
+                            carne_secundaria_nome = st.selectbox("Adicionar uma segunda carne? (Opcional)", opcoes_carne_secundaria, key="sb_carne_secundaria_launcher")
+                            if carne_secundaria_nome != "Nenhuma":
+                                carne_secundaria_info = next((c for c in carnes_disponiveis if c['nome_opcao'] == carne_secundaria_nome), None)
+                                if carne_secundaria_info:
+                                    preco_final_sb += carne_secundaria_info.get('preco_adicional', 0)
+                                    nome_final_sb += f" e {carne_secundaria_nome}"
                 quantidade_sb = st.number_input("Quantidade:", min_value=1, value=1, step=1, key="sb_qty_launcher")
                 obs_sb = st.text_input("Observações:", key="sb_obs_launcher")
                 if st.button("Adicionar Sanduíche ao Pedido", key="sb_add_launcher"):
@@ -94,7 +99,6 @@ def render_order_placement_screen(db, all_products, all_opcoes):
                     st.rerun()
 
     with tab_cremes:
-        # Lógica completa para Cremes
         st.subheader("Montar Creme")
         cremes_base = [p for p in all_products if p.get('categoria') == 'Cremes']
         if not cremes_base:
@@ -122,7 +126,6 @@ def render_order_placement_screen(db, all_products, all_opcoes):
                     st.rerun()
 
     with tab_bebidas:
-        # Lógica completa para Bebidas
         st.subheader("Escolher Bebida")
         bebidas = [p for p in all_products if p.get('categoria') == 'Bebidas']
         if not bebidas:
@@ -224,9 +227,9 @@ else:
                                 if item.get('obs'):
                                     st.info(f"   > Obs: {item['obs']}")
                             st.write("---")
-                            if st.button("Confirmar Pagamento.", key=f"pay_{pedido['id']}", type="primary"):
+                            if st.button("Confirmar Pagamento e Enviar para Cozinha", key=f"pay_{pedido['id']}", type="primary"):
                                 db.collection("pedidos").document(pedido['id']).update({"status": "pago"})
-                                st.success(f"Pedido de {identificador_label} Pedido Pago!")
+                                st.success(f"Pedido de {identificador_label} pago e enviado para a cozinha!")
                                 st.balloons()
                                 st.rerun()
             except Exception as e:
@@ -239,7 +242,6 @@ else:
         try:
             today = datetime.now().date()
             start_of_day = datetime.combine(today, time.min)
-            
             pedidos_ref = db.collection("pedidos").where(filter=FieldFilter("status", "==", "pago")).where(filter=FieldFilter("timestamp", ">=", start_of_day)).order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
             pedidos_pagos_hoje = list(pedidos_ref)
 
@@ -248,11 +250,9 @@ else:
             else:
                 total_faturado = sum(p.to_dict().get('total', 0) for p in pedidos_pagos_hoje)
                 num_pedidos = len(pedidos_pagos_hoje)
-                
                 st.metric(label="Faturamento Total do Dia", value=f"R$ {total_faturado:.2f}")
                 st.metric(label="Total de Pedidos Pagos", value=num_pedidos)
                 st.write("---")
-
                 st.subheader("Lista de Pedidos Pagos Hoje")
                 for pedido_doc in pedidos_pagos_hoje:
                     pedido = pedido_doc.to_dict()
