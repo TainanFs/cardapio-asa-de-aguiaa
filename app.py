@@ -12,6 +12,11 @@ page_bg_img = """
 background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true");
 background-size: cover;
 }
+[data-testid="stHeader"] {
+background-color: rgba(0, 0, 0, 0);
+}
+[data-testing="stToolbar"] {
+}
 </style>
 """
 st.markdown(page_bg_img,unsafe_allow_html=True)
