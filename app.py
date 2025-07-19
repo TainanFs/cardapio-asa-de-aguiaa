@@ -2,7 +2,7 @@ import streamlit as st
 import os
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
-from google.cloud.firestore_v1 import FieldValue # Import corrigido para o erro de atributo
+from google.cloud.firestore import FieldValue # ESTA É A LINHA CORRIGIDA
 from datetime import datetime, time
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
