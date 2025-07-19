@@ -1,9 +1,9 @@
 import streamlit as st
-import base64
 import os
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
-from datetime import datetime
+from google.cloud.firestore import FieldValue # A versão 2.16.0 garante que este import funciona
+from datetime import datetime, time
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -35,9 +35,7 @@ if 'logged_in' not in st.session_state:
     })
 
 # --- FUNÇÕES DE LÓGICA E TELAS ---
-
 def check_login(username, password):
-    """Verifica as credenciais do usuário no Firestore."""
     users_ref = db.collection("usuarios")
     query = users_ref.where(filter=FieldFilter("nome_usuario", "==", username)).limit(1).stream()
     user_list = [user.to_dict() for user in query]
@@ -46,9 +44,7 @@ def check_login(username, password):
     return False, None
 
 def render_order_placement_screen(db, all_products, all_opcoes):
-    """Renderiza a tela completa de lançamento de pedidos com a lógica de 'Comandas Abertas'."""
     st.title(f"👨‍🍳 Lançar Pedido - {st.session_state.get('username')}")
-
     tipo_comanda = st.radio("Tipo de Comanda:", ["Mesa", "Cliente"], horizontal=True, key="tipo_comanda_launcher")
     identificador_comanda = ""
     if tipo_comanda == "Mesa":
@@ -62,6 +58,7 @@ def render_order_placement_screen(db, all_products, all_opcoes):
     tab_sanduiches, tab_cremes, tab_bebidas = st.tabs(["🍔 Sanduíches", "🍨 Cremes", "🥤 Bebidas"])
 
     with tab_sanduiches:
+        # Lógica completa para Sanduíches
         st.subheader("Montar Sanduíche")
         sanduiches_base = [p for p in all_products if p.get('categoria') == 'Sanduíches']
         if not sanduiches_base:
@@ -100,6 +97,7 @@ def render_order_placement_screen(db, all_products, all_opcoes):
                     st.rerun()
 
     with tab_cremes:
+        # Lógica completa para Cremes
         st.subheader("Montar Creme")
         cremes_base = [p for p in all_products if p.get('categoria') == 'Cremes']
         if not cremes_base:
@@ -125,8 +123,8 @@ def render_order_placement_screen(db, all_products, all_opcoes):
                     st.session_state.cart.append({"nome": nome_final_cr, "preco_unitario": preco_final_cr, "quantidade": quantidade_cr, "obs": obs_cr})
                     st.success(f"Adicionado: {quantidade_cr}x {nome_final_cr}!")
                     st.rerun()
-
     with tab_bebidas:
+        # Lógica completa para Bebidas
         st.subheader("Escolher Bebida")
         bebidas = [p for p in all_products if p.get('categoria') == 'Bebidas']
         if not bebidas:
