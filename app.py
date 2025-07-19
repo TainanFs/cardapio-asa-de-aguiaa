@@ -8,7 +8,7 @@ from datetime import datetime, time
 import streamlit as st
 
 # 1. URL CORRETA (apontando para o arquivo de imagem "cru" e com o nome do repositório corrigido)
-image_url = "https://raw.githubusercontent.com/TainanFs/cardapio-asa-de-aguiaa/main/background.jpg"
+image_url = "https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true"
 
 # 2. CSS CORRIGIDO (sem erros de digitação e com o alvo estável)
 page_bg_img = f"""
