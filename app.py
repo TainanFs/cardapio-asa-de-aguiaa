@@ -1,9 +1,9 @@
 import streamlit as st
+import base64
 import os
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
-from google.cloud.firestore import FieldValue # ESTA É A LINHA CORRIGIDA
-from datetime import datetime, time
+from datetime import datetime
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
