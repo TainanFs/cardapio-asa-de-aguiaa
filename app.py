@@ -3,7 +3,7 @@ import base64
 import os
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
-from datetime import datetime
+from datetime import datetime, time
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
