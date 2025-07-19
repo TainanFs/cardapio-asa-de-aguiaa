@@ -2,6 +2,7 @@ import streamlit as st
 import os
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
+from google.cloud.firestore_v1 import FieldValue # Import corrigido para o erro de atributo
 from datetime import datetime, time
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
@@ -164,12 +165,11 @@ def render_order_placement_screen(db, all_products, all_opcoes):
             else:
                 query = db.collection("pedidos").where(filter=FieldFilter("identificador", "==", identificador_comanda)).where(filter=FieldFilter("status", "==", "novo")).limit(1)
                 comandas_abertas = list(query.stream())
-
                 if comandas_abertas:
                     comanda_existente_doc = comandas_abertas[0]
                     comanda_existente_doc.reference.update({
-                        "itens": firestore.FieldValue.array_union(st.session_state.cart),
-                        "total": firestore.FieldValue.increment(total_a_adicionar)
+                        "itens": FieldValue.array_union(st.session_state.cart),
+                        "total": FieldValue.increment(total_a_adicionar)
                     })
                     st.success(f"Itens adicionados à comanda da(o) {identificador_comanda}!")
                 else:
