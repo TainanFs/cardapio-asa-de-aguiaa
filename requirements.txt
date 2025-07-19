@@ -1,2 +1,2 @@
 streamlit
-google-cloud-firestore
+google-cloud-firestore==2.16.0
