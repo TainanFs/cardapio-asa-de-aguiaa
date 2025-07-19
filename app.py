@@ -4,6 +4,43 @@ from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 from datetime import datetime, time
 
+# --- FUNÇÃO PARA A IMAGEM DE FUNDO ---
+
+@st.cache_data
+def get_img_as_base64(file):
+    """Lê um arquivo de imagem e o converte para o formato base64."""
+    try:
+        with open(file, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except FileNotFoundError:
+        st.error(f"Arquivo de imagem de fundo '{file}' não encontrado. Verifique o nome e o local.")
+        return None
+
+# Use o nome exato do seu arquivo de imagem
+img = get_img_as_base64("background.jpg")
+
+if img:
+    page_bg_img = f"""
+    <style>
+    [data-testid="stAppViewContainer"] > .main {{
+    background-image: url("data:image/jpeg;base64,{img}");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    }}
+    /* Para deixar o cabeçalho transparente */
+    [data-testid="stHeader"] {{
+    background-color: rgba(0, 0, 0, 0);
+    }}
+    /* Para dar um leve fundo translúcido à barra lateral */
+    [data-testid="stSidebar"] > div:first-child {{
+    background-color: rgba(38, 39, 48, 0.7);
+    }}
+    </style>
+    """
+    st.markdown(page_bg_img, unsafe_allow_html=True)
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="Cardápio Asa de Águia",
@@ -11,19 +48,7 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="auto"
 )
-# --- FUNÇÃO PARA A IMAGEM DE FUNDO ---
-import streamlit as st 
-page_bg_img = f"""
-<style>
 
-.st-emotion-cache-1yiq2ps {{
- background-image: url ("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg");
- background-sioze: cover;
-}}
-</style>
-""
-st.markdown(page_bg_img,unsafe_allow_html=True)
-    
 # --- LÓGICA DE CONEXÃO ---
 try:
     if hasattr(st, 'secrets') and "firestore_credentials" in st.secrets:
