@@ -14,7 +14,7 @@ page_bg_img = f"""
  background-sioze: cover;
 }}
 </style>
-""
+"""
 st.markdown(page_bg_img,unsafe_allow_html=True)
 
 # --- LÓGICA DE CONEXÃO ---
