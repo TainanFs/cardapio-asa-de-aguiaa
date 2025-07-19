@@ -16,7 +16,7 @@ st.set_page_config(
 # --- CÓDIGO PARA IMAGEM DE FUNDO (MÉTODO COM URL DIRETA) ---
 
 # URL pública da imagem no seu repositório do GitHub (CORRIGIDA)
-image_url = "https://raw.githubusercontent.com/Tainanfs1/cardapio-asa-de-aguia/main/background.jpg"
+image_url = "https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg"
 
 # Monta o CSS para usar a imagem diretamente da URL
 page_bg_img = f"""
