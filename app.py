@@ -224,7 +224,7 @@ else:
                                 if item.get('obs'):
                                     st.info(f"   > Obs: {item['obs']}")
                             st.write("---")
-                            if st.button("Confirmar Pagamento e Enviar para Cozinha", key=f"pay_{pedido['id']}", type="primary"):
+                            if st.button("Confirmar Pagamento.", key=f"pay_{pedido['id']}", type="primary"):
                                 db.collection("pedidos").document(pedido['id']).update({"status": "pago"})
                                 st.success(f"Pedido de {identificador_label} Pedido Pago!")
                                 st.balloons()
