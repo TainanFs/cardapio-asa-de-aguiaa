@@ -6,7 +6,7 @@ from datetime import datetime, time
 
 # --- FUNÇÃO PARA A IMAGEM DE FUNDO ---
 import streamlit as st 
-page_bg_img = f""""
+page_bg_img = f"""
 <style>
 
 .st-emotion-cache-1yiq2ps {{
@@ -14,7 +14,7 @@ page_bg_img = f""""
  background-sioze: cover;
 }}
 </style>
-""
+"""
 st.markdown(page_bg_img,unsafe_allow_html=True)
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
