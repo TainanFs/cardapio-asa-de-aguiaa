@@ -5,55 +5,17 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 from datetime import datetime, time
 
 # --- FUNÇÃO PARA A IMAGEM DE FUNDO ---
+import streamlit as st 
+page_bg_img = f"""
+<style>
 
-import streamlit as st
-import base64
-import os
-
-@st.cache_data
-def get_img_as_base64(file):
-    """
-    Lê um arquivo de imagem e o converte para o formato base64.
-    Isso é útil para embutir imagens diretamente no CSS.
-    """
-    try:
-        # Abre o arquivo em modo de leitura de bytes ('rb')
-        with open(file, "rb") as f:
-            data = f.read()
-        # Codifica os bytes para base64 e decodifica para uma string de texto
-        return base64.b64encode(data).decode()
-    except FileNotFoundError:
-        st.error(f"Arquivo de imagem de fundo '{file}' não encontrado.")
-        return None
-
-# --- LÓGICA PRINCIPAL ---
-
-# Nome do seu arquivo de imagem
-image_file = "background.jpg"
-
-# Chama a função para obter a imagem como texto base64
-img = get_img_as_base64(image_file)
-
-# Apenas continua se a imagem foi encontrada e carregada com sucesso
-if img:
-    # Cria o código CSS usando uma f-string do Python
-    page_bg_img = f"""
-    <style>
-    [data-testid="stAppViewContainer"] > .main {{
-    background-image: url("data:image/jpeg;base64,{img}");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    }}
-    [data-testid="stHeader"] {{
-    background-color: rgba(0, 0, 0, 0);
-    }}
-    </style>
-    """
-    
-    # Injeta o CSS na página do Streamlit
-    st.markdown(page_bg_img, unsafe_allow_html=True)
+.st-emotion-cache-1yiq2ps {{
+ background-image: url ("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg");
+ background-sioze: cover;
+}}
+</style>
+""
+st.markdown(page_bg_img,unsafe_allow_html=True)
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
