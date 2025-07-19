@@ -3,7 +3,7 @@ import os
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 from datetime import datetime, time
-st.image("background.jpg",width=1000)
+
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="Cardápio Asa de Águia",
