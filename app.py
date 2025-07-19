@@ -36,9 +36,13 @@ if img:
     [data-testid="stHeader"] {{
     background-color: rgba(0, 0, 0, 0);
     }}
+    [data-testid="stSidebar"] > div:first-child {{
+    background-color: rgba(38, 39, 48, 0.5);
+    }}
     </style>
     """
     st.markdown(page_bg_img, unsafe_allow_html=True)
+    
 # --- LÓGICA DE CONEXÃO ---
 try:
     if hasattr(st, 'secrets') and "firestore_credentials" in st.secrets:
