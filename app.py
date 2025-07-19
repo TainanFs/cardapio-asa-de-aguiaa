@@ -20,7 +20,7 @@ background-color: rgba(0, 0, 0, 0);
 </style>
 """
 st.markdown(page_bg_img,unsafe_allow_html=True)
-st.title("Direitos Tainan Fernandes")
+
 
 # --- LÓGICA DE CONEXÃO ---
 try:
