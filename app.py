@@ -17,7 +17,7 @@ page_bg_img = f"""
 <style>
 
 .st-emotion-cache-1yiq2ps {{
- background-image: url ("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg
+ background-image: url ("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg");
  background-sioze: cover;
 }}
 </style>
