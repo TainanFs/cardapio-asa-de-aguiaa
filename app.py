@@ -231,37 +231,18 @@ if not st.session_state.get('logged_in', False):
 
 # TELAS PÓS-LOGIN
 else:
-    # Sidebar comum a todos os usuários logados
-    st.sidebar.write(f"Logado como: **{st.session_state.get('username')}**")
-    st.sidebar.write(f"Cargo: **{st.session_state.get('role')}**")
-    def logout():
-        # Limpa todo o session_state para garantir um logout limpo
-        st.session_state.clear()
-        st.rerun()
-    st.sidebar.button("Sair", on_click=logout)
-    
-    # Carrega dados que todos os painéis (exceto admin, talvez) usarão
-    try:
-        all_products_query = db.collection("produtos").where(filter=FieldFilter("disponivel", "==", True)).stream()
-        all_products = [p.to_dict() | {'id': p.id} for p in all_products_query]
-        
-        all_opcoes_query = db.collection("opcoes").stream()
-        all_opcoes = [o.to_dict() | {'id': o.id} for o in all_opcoes_query]
-    except Exception as e:
-        st.error(f"Erro ao carregar dados do cardápio: {e}")
-        st.stop()
+    # ... (código do sidebar e de carregar os produtos, que já está correto) ...
 
-    # PAINEL DO ADMIN
+    # PAINEL DO ADMIN (deixe como está)
     if st.session_state.get('role') == 'admin':
         st.title("⚙️ Painel do Administrador")
-        # Implementar a lógica do painel de admin aqui
-        st.write("Bem-vindo, admin! Funcionalidades de gerenciamento de produtos e usuários a serem implementadas.")
+        st.write("Bem-vindo, admin! Funcionalidades a serem implementadas.")
 
-    # PAINEL DO GARÇOM
+    # PAINEL DO GARÇOM (deixe como está)
     elif st.session_state.get('role') == 'garcom':
         render_order_placement_screen(db, all_products, all_opcoes)
 
-    # PAINEL DO CAIXA
+    # PAINEL DO CAIXA (SUBSTITUA POR ESTE BLOCO)
     elif st.session_state.get('role') == 'caixa':
         st.title("💰 Painel do Caixa")
         tab_ver_contas, tab_lancar_pedido = st.tabs(["Ver Contas Abertas", "Lançar Novo Pedido"])
@@ -269,20 +250,34 @@ else:
         with tab_ver_contas:
             st.header("Contas Pendentes de Pagamento")
             try:
-                # Busca pedidos com status 'novo' para o caixa
+                # A busca no banco de dados continua a mesma
                 pedidos_ref = db.collection("pedidos").where(filter=FieldFilter("status", "==", "novo")).order_by("timestamp", direction=firestore.Query.ASCENDING).stream()
                 pedidos_a_pagar = [doc.to_dict() | {'id': doc.id} for doc in pedidos_ref]
 
                 if not pedidos_a_pagar:
                     st.success("Nenhuma conta pendente de pagamento. Tudo em dia! ✅")
                 else:
+                    # O loop que cria as caixas expansíveis
                     for pedido in pedidos_a_pagar:
                         identificador_label = f"**{pedido.get('identificador')}**"
                         with st.expander(f"{identificador_label} - Total: R$ {pedido.get('total', 0):.2f}"):
-                            # Detalhes do pedido...
-                            if st.button("Marcar como Pago", key=f"pay_{pedido['id']}", type="primary"):
+                            
+                            # --- CÓDIGO ADICIONADO AQUI ---
+                            st.subheader("Itens Consumidos:")
+                            # Loop para mostrar cada item do pedido
+                            for item in pedido.get('itens', []):
+                                st.write(f" - {item.get('quantidade')}x **{item['nome']}**")
+                                # Mostra observações, se houver
+                                if item.get('obs'):
+                                    st.info(f"   > Obs: {item['obs']}")
+                            st.write("---")
+                            # --- FIM DO CÓDIGO ADICIONADO ---
+                            
+                            # Botão para confirmar o pagamento
+                            if st.button("Confirmar Pagamento e Enviar para Cozinha", key=f"pay_{pedido['id']}", type="primary"):
                                 db.collection("pedidos").document(pedido['id']).update({"status": "pago"})
-                                st.success(f"Pedido de {identificador_label} marcado como pago!")
+                                st.success(f"Pedido de {identificador_label} pago e enviado para a cozinha!")
+                                st.balloons()
                                 st.rerun()
             except Exception as e:
                 st.error(f"Ocorreu um erro ao buscar contas: {e}")
@@ -290,6 +285,13 @@ else:
         with tab_lancar_pedido:
             render_order_placement_screen(db, all_products, all_opcoes)
 
+    # PAINEL DA COZINHA (deixe como está)
+    elif st.session_state.get('role') == 'cozinha':
+        # ... (código da cozinha, que já está correto) ...
+
+    # Fallback para cargos não reconhecidos (deixe como está)
+    else:
+        st.error("Seu cargo não foi reconhecido ou não possui um painel definido.")
     # PAINEL DA COZINHA
     elif st.session_state.get('role') == 'cozinha':
         st.title("🍳 Cozinha - Fila de Preparo")
