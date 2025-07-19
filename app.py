@@ -312,10 +312,6 @@ if st.session_state.get('role') == 'admin':
         with tab_usuarios:
             st.info("A funcionalidade de gerenciamento de Usuários será implementada aqui.")
 
-    elif st.session_state.get('role') == 'garcom':
-        products_disponiveis = [p for p in all_products if p.get("disponivel", True)]
-        render_order_placement_screen(db, products_disponiveis, all_opcoes)
-
     elif st.session_state.get('role') == 'caixa':
         st.title("💰 Painel do Caixa")
         tab_ver_contas, tab_lancar_pedido = st.tabs(["Ver Contas Abertas", "Lançar Novo Pedido"])
