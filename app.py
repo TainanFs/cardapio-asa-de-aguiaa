@@ -7,33 +7,12 @@ from datetime import datetime
 
 # --- CONFIGURAÇÃO DA PÁGINA (Deve ser o primeiro comando Streamlit) ---
 st.set_page_config(
-    # --- CÓDIGO PARA IMAGEM DE FUNDO (TENTATIVA EXPERIMENTAL Nº 2) ---
-
-import streamlit as st # Garanta que o import está no topo do seu arquivo
-
-# A URL correta que já descobrimos
-image_url = "https://raw.githubusercontent.com/TainanFs/cardapio-asa-de-aguiaa/main/background.jpg"
-
-# A nova tentativa de CSS, aplicando ao BODY
-page_bg_img = f"""
-<style>
-body {{
-background-image: url("{image_url}");
-background-size: cover;
-background-position: center;
-background-repeat: no-repeat;
-background-attachment: fixed;
-}}
-</style>
-"""
-
-st.markdown(page_bg_img, unsafe_allow_html=True)
-
     page_title="Cardápio Asa de Águia",
     page_icon="🔥",
     layout="centered",
     initial_sidebar_state="auto"
 )
+
 
 # --- LÓGICA DE CONEXÃO "INTELIGENTE" E MAIS ROBUSTA COM O BANCO DE DADOS ---
 try:
