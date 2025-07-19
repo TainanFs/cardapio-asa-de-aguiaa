@@ -61,55 +61,77 @@ def check_login(username, password):
     return False, None
 
 def render_order_placement_screen(db, all_products, all_opcoes):
-    """Renderiza a tela de lançamento de pedidos para garçons e caixas."""
+    """Renderiza a tela completa de lançamento de pedidos."""
     st.title(f"👨‍🍳 Lançar Pedido - {st.session_state.get('username')}")
 
-    tipo_comanda = st.radio("Tipo de Comanda:", ["Mesa", "Cliente"], horizontal=True)
+    tipo_comanda = st.radio("Tipo de Comanda:", ["Mesa", "Cliente"], horizontal=True, key="tipo_comanda_launcher")
     identificador_comanda = ""
-
     if tipo_comanda == "Mesa":
-        st.session_state.table_number = st.number_input("Número da Mesa:", min_value=1, step=1, value=st.session_state.get('table_number', 1))
+        st.session_state.table_number = st.number_input("Número da Mesa:", min_value=1, step=1, value=st.session_state.get('table_number', 1), key="table_num_launcher")
         identificador_comanda = f"Mesa {st.session_state.table_number}"
     else:
-        st.session_state.client_name = st.text_input("Nome do Cliente:", value=st.session_state.get('client_name', ''))
+        st.session_state.client_name = st.text_input("Nome do Cliente:", value=st.session_state.get('client_name', ''), key="client_name_launcher")
         identificador_comanda = st.session_state.client_name
 
     st.write("---")
-    
+
     tab_sanduiches, tab_cremes, tab_bebidas = st.tabs(["🍔 Sanduíches", "🍨 Cremes", "🥤 Bebidas"])
 
     with tab_sanduiches:
         st.subheader("Montar Sanduíche")
-        # Lógica para adicionar sanduíches...
         sanduiches_base = [p for p in all_products if p.get('categoria') == 'Sanduíches']
-        if sanduiches_base:
-            base_nome = st.selectbox("Escolha o sanduíche:", [s['nome'] for s in sanduiches_base], key="sb_base")
-            # Restante da lógica...
+        if not sanduiches_base:
+            st.info("Nenhum 'Sanduíche' cadastrado.")
         else:
-            st.info("Nenhum sanduíche disponível.")
+            base_nome = st.selectbox("Escolha o sanduíche:", [s['nome'] for s in sanduiches_base], key="sb_base_launcher")
+            base_selecionada = next((s for s in sanduiches_base if s['nome'] == base_nome), None)
+
+            if base_selecionada:
+                nome_final_sb = base_nome
+                preco_final_sb = base_selecionada.get('preco_base', 0)
+
+                # Lógica para seleção de carnes
+                if base_selecionada.get('permite_carne'):
+                    carnes_disponiveis = [o for o in all_opcoes if o.get('tipo') == 'Carne']
+                    if carnes_disponiveis:
+                        nomes_carnes_selecionadas = st.multiselect("Escolha as carnes:", [c['nome_opcao'] for c in carnes_disponiveis], key="sb_carnes_launcher")
+                        if nomes_carnes_selecionadas:
+                            carnes_selecionadas_info = [c for c in carnes_disponiveis if c['nome_opcao'] in nomes_carnes_selecionadas]
+                            for carne_info in carnes_selecionadas_info:
+                                preco_final_sb += carne_info.get('preco_adicional', 0)
+                            nomes_formatados = " e ".join(nomes_carnes_selecionadas)
+                            nome_final_sb += f" com {nomes_formatados}"
+                    else:
+                        st.warning("Nenhuma opção de 'Carne' cadastrada pelo admin.")
+
+                quantidade_sb = st.number_input("Quantidade:", min_value=1, value=1, step=1, key="sb_qty_launcher")
+                obs_sb = st.text_input("Observações:", key="sb_obs_launcher")
+
+                if st.button("Adicionar Sanduíche ao Pedido", key="sb_add_launcher"):
+                    st.session_state.cart.append({"nome": nome_final_sb, "preco_unitario": preco_final_sb, "quantidade": quantidade_sb, "obs": obs_sb})
+                    st.success(f"Adicionado: {quantidade_sb}x {nome_final_sb}!")
+                    st.rerun()
 
     with tab_cremes:
         st.subheader("Montar Creme")
-        # Lógica para adicionar cremes...
         cremes_base = [p for p in all_products if p.get('categoria') == 'Cremes']
         if cremes_base:
-            creme_nome = st.selectbox("Escolha o creme:", [c['nome'] for c in cremes_base], key="cr_base")
-            # Restante da lógica...
+            # Lógica completa para cremes aqui...
+            st.info("Lógica de Cremes a ser implementada.")
         else:
-            st.info("Nenhum creme disponível.")
+            st.info("Nenhum 'Creme' cadastrado.")
 
     with tab_bebidas:
         st.subheader("Escolher Bebida")
-        # Lógica para adicionar bebidas...
         bebidas = [p for p in all_products if p.get('categoria') == 'Bebidas']
         if bebidas:
-            bebida_nome = st.selectbox("Escolha a bebida:", [b['nome'] for b in bebidas], key="bb_base")
-            # Restante da lógica...
+            # Lógica completa para bebidas aqui...
+            st.info("Lógica de Bebidas a ser implementada.")
         else:
-            st.info("Nenhuma bebida disponível.")
+            st.info("Nenhuma 'Bebida' cadastrada.")
 
     st.write("---")
-    st.header(f"Comanda para: {identificador_comanda}")
+    st.header(f"Revisão da Comanda para: {identificador_comanda}")
 
     if st.session_state.cart:
         total_comanda = sum(item.get('preco_unitario', 0) * item.get('quantidade', 1) for item in st.session_state.cart)
@@ -121,13 +143,14 @@ def render_order_placement_screen(db, all_products, all_opcoes):
                 if item.get('obs'):
                     st.markdown(f"  > *Obs: {item['obs']}*")
             with col2:
-                if st.button("🗑️", key=f"del_cart_{i}", help="Remover item"):
+                if st.button("🗑️", key=f"del_cart_{i}_launcher", help="Remover item"):
                     st.session_state.cart.pop(i)
                     st.rerun()
-        
+
         st.subheader(f"Total da Comanda: R$ {total_comanda:.2f}")
 
-        if st.button("✅ Enviar Pedido para Cozinha", type="primary"):
+        # O BOTÃO DE ENVIAR O PEDIDO
+        if st.button("✅ Enviar Pedido para Cozinha", type="primary", key="send_order_launcher"):
             if tipo_comanda == "Cliente" and not identificador_comanda.strip():
                 st.warning("Por favor, insira o nome do cliente.")
             else:
@@ -137,18 +160,16 @@ def render_order_placement_screen(db, all_products, all_opcoes):
                     "garcom": st.session_state.username,
                     "itens": st.session_state.cart,
                     "total": total_comanda,
-                    "status": "novo", # Pedidos sempre são criados como 'novo'
+                    "status": "novo",
                     "timestamp": firestore.SERVER_TIMESTAMP
                 }
                 db.collection("pedidos").add(pedido_final)
-                st.success("Pedido enviado com sucesso!")
+                st.success("Pedido enviado para a Cozinha!")
+                st.session_state.cart = [] # Limpa o carrinho
                 st.balloons()
-                # Limpar o carrinho após o envio
-                st.session_state.cart = []
                 st.rerun()
     else:
-        st.info("A comanda está vazia. Adicione itens acima.")
-
+        st.info("A comanda está vazia. Adicione itens para continuar.")
 
 # --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
 
