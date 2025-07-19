@@ -45,7 +45,7 @@ def check_login(username, password):
     return False, None
 
 def render_order_placement_screen(db, all_products, all_opcoes):
-    """Renderiza a tela completa de lançamento de pedidos."""
+    """Renderiza a tela completa de lançamento de pedidos com a lógica de 'Comandas Abertas'."""
     st.title(f"👨‍🍳 Lançar Pedido - {st.session_state.get('username')}")
 
     tipo_comanda = st.radio("Tipo de Comanda:", ["Mesa", "Cliente"], horizontal=True, key="tipo_comanda_launcher")
@@ -143,9 +143,9 @@ def render_order_placement_screen(db, all_products, all_opcoes):
                     st.rerun()
 
     st.write("---")
-    st.header(f"Revisão da Comanda para: {identificador_comanda}")
+    st.header(f"Itens a Adicionar na Comanda de: {identificador_comanda}")
     if st.session_state.cart:
-        total_comanda = sum(item.get('preco_unitario', 0) * item.get('quantidade', 1) for item in st.session_state.cart)
+        total_a_adicionar = sum(item.get('preco_unitario', 0) * item.get('quantidade', 1) for item in st.session_state.cart)
         for i, item in enumerate(st.session_state.cart):
             col1, col2 = st.columns([4, 1])
             with col1:
@@ -156,19 +156,32 @@ def render_order_placement_screen(db, all_products, all_opcoes):
                 if st.button("🗑️", key=f"del_cart_{i}_launcher", help="Remover item"):
                     st.session_state.cart.pop(i)
                     st.rerun()
-        st.subheader(f"Total da Comanda: R$ {total_comanda:.2f}")
-        if st.button("✅ Enviar Pedido", type="primary", key="send_order_launcher"):
-            if tipo_comanda == "Cliente" and not identificador_comanda.strip():
-                st.warning("Por favor, insira o nome do cliente.")
+        st.subheader(f"Total a ser adicionado: R$ {total_a_adicionar:.2f}")
+        
+        if st.button("✅ Adicionar à Comanda / Abrir Nova", type="primary", key="send_order_launcher"):
+            if not identificador_comanda.strip():
+                st.warning("Por favor, preencha o número da Mesa ou o nome do Cliente.")
             else:
-                pedido_final = {"identificador": identificador_comanda, "tipo_identificador": tipo_comanda, "garcom": st.session_state.username, "itens": st.session_state.cart, "total": total_comanda, "status": "novo", "timestamp": firestore.SERVER_TIMESTAMP}
-                db.collection("pedidos").add(pedido_final)
-                st.success("Pedido enviado com sucesso!")
+                query = db.collection("pedidos").where(filter=FieldFilter("identificador", "==", identificador_comanda)).where(filter=FieldFilter("status", "==", "novo")).limit(1)
+                comandas_abertas = list(query.stream())
+
+                if comandas_abertas:
+                    comanda_existente_doc = comandas_abertas[0]
+                    comanda_existente_doc.reference.update({
+                        "itens": firestore.FieldValue.array_union(st.session_state.cart),
+                        "total": firestore.FieldValue.increment(total_a_adicionar)
+                    })
+                    st.success(f"Itens adicionados à comanda da(o) {identificador_comanda}!")
+                else:
+                    pedido_final = {"identificador": identificador_comanda, "tipo_identificador": tipo_comanda, "garcom": st.session_state.username, "itens": st.session_state.cart, "total": total_a_adicionar, "status": "novo", "timestamp": firestore.SERVER_TIMESTAMP}
+                    db.collection("pedidos").add(pedido_final)
+                    st.success(f"Nova comanda aberta para {identificador_comanda}!")
+                
                 st.session_state.cart = []
                 st.balloons()
                 st.rerun()
     else:
-        st.info("A comanda está vazia. Adicione itens para continuar.")
+        st.info("O carrinho está vazio. Adicione itens para enviar à comanda.")
 
 # --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
 if not st.session_state.get('logged_in', False):
@@ -244,7 +257,6 @@ else:
             start_of_day = datetime.combine(today, time.min)
             pedidos_ref = db.collection("pedidos").where(filter=FieldFilter("status", "==", "pago")).where(filter=FieldFilter("timestamp", ">=", start_of_day)).order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
             pedidos_pagos_hoje = list(pedidos_ref)
-
             if not pedidos_pagos_hoje:
                 st.success("Nenhum pedido pago registrado hoje.")
             else:
