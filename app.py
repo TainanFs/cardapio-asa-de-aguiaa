@@ -226,7 +226,7 @@ else:
                             st.write("---")
                             if st.button("Confirmar Pagamento e Enviar para Cozinha", key=f"pay_{pedido['id']}", type="primary"):
                                 db.collection("pedidos").document(pedido['id']).update({"status": "pago"})
-                                st.success(f"Pedido de {identificador_label} pago e enviado para a cozinha!")
+                                st.success(f"Pedido de {identificador_label} Pedido Pago!")
                                 st.balloons()
                                 st.rerun()
             except Exception as e:
