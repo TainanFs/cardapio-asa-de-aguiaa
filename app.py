@@ -13,28 +13,6 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# --- CÓDIGO PARA IMAGEM DE FUNDO (MÉTODO COM URL DIRETA) ---
-
-# --- CÓDIGO PARA IMAGEM DE FUNDO (TESTE DE DIAGNÓSTICO) ---
-
-# URL de uma imagem de teste, de um site diferente e confiável.
-test_image_url = "https://i.imgur.com/1v9n51z.jpeg" 
-
-# Monta o CSS para usar a imagem de teste
-page_bg_img = f"""
-<style>
-[data-testid="stAppViewContainer"] > .main {{
-background-image: url("{test_image_url}");
-background-size: cover;
-background-position: center;
-background-repeat: no-repeat;
-background-attachment: local;
-}}
-/* O resto do seu CSS continua aqui */
-</style>
-"""
-st.markdown(page_bg_img, unsafe_allow_html=True)
-
 # --- LÓGICA DE CONEXÃO "INTELIGENTE" E MAIS ROBUSTA COM O BANCO DE DADOS ---
 try:
     # Verificação mais direta: se o objeto 'secrets' existe e contém nossas credenciais
