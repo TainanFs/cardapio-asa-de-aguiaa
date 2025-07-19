@@ -12,36 +12,17 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 # --- FUNÇÃO PARA A IMAGEM DE FUNDO ---
-@st.cache_data
-def get_img_as_base64(file):
-    try:
-        with open(file, "rb") as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-    except FileNotFoundError:
-        return None
+import streamlit as st 
+page_bg_img = f"""
+<style>
 
-img = get_img_as_base64("background.jpg")
-
-if img:
-    page_bg_img = f"""
-    <style>
-    [data-testid="stAppViewContainer"] > .main {{
-    background-image: url("data:image/jpeg;base64,{img}");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    }}
-    [data-testid="stHeader"] {{
-    background-color: rgba(0, 0, 0, 0);
-    }}
-    [data-testid="stSidebar"] > div:first-child {{
-    background-color: rgba(38, 39, 48, 0.5);
-    }}
-    </style>
-    """
-    st.markdown(page_bg_img, unsafe_allow_html=True)
+.st-emotion-cache-1yiq2ps {{
+ background-image: url ("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg
+ background-sioze: cover;
+}}
+</style>
+""
+st.markdown(page_bg_img,unsafe_allow_html=True)
     
 # --- LÓGICA DE CONEXÃO ---
 try:
