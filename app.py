@@ -1,5 +1,4 @@
 import streamlit as st
-import base64
 import os
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
@@ -30,7 +29,7 @@ except Exception as e:
 default_values = {
     'logged_in': False, 'role': None, 'username': None, 'cart': [],
     'table_number': 1, 'client_name': "",
-    'editing_product_id': None, 'editing_option_id': None
+    'editing_product_id': None, 'editing_option_id': None, 'editing_user_id': None
 }
 for key, value in default_values.items():
     if key not in st.session_state:
@@ -63,7 +62,7 @@ def render_order_placement_screen(db, products, options):
         st.subheader("Montar Sanduíche")
         sanduiches_base = [p for p in products if p.get('categoria') == 'Sanduíches']
         if not sanduiches_base:
-            st.info("Nenhum 'Sanduíche' cadastrado.")
+            st.info("Nenhum 'Sanduíche' disponível no momento.")
         else:
             base_nome = st.selectbox("Escolha o sanduíche:", [s['nome'] for s in sanduiches_base], key="sb_base_launcher")
             base_selecionada = next((s for s in sanduiches_base if s['nome'] == base_nome), None)
@@ -96,13 +95,11 @@ def render_order_placement_screen(db, products, options):
                     st.session_state.cart.append({"nome": nome_final_sb, "preco_unitario": preco_final_sb, "quantidade": quantidade_sb, "obs": obs_sb})
                     st.success(f"Adicionado: {quantidade_sb}x {nome_final_sb}!")
                     st.rerun()
-
     with tab_cremes:
-        # Lógica completa para Cremes
         st.subheader("Montar Creme")
         cremes_base = [p for p in products if p.get('categoria') == 'Cremes']
         if not cremes_base:
-            st.info("Nenhum 'Creme' cadastrado.")
+            st.info("Nenhum 'Creme' disponível no momento.")
         else:
             creme_nome = st.selectbox("Escolha o creme:", [c['nome'] for c in cremes_base], key="cr_base_launcher")
             creme_selecionado = next((c for c in cremes_base if c['nome'] == creme_nome), None)
@@ -126,11 +123,10 @@ def render_order_placement_screen(db, products, options):
                     st.rerun()
 
     with tab_bebidas:
-        # Lógica completa para Bebidas
         st.subheader("Escolher Bebida")
         bebidas = [p for p in products if p.get('categoria') == 'Bebidas']
         if not bebidas:
-            st.info("Nenhuma 'Bebida' cadastrada.")
+            st.info("Nenhuma 'Bebida' disponível no momento.")
         else:
             bebida_nome = st.selectbox("Escolha a bebida:", [b['nome'] for b in bebidas], key="bb_base_launcher")
             bebida_selecionada = next((b for b in bebidas if b['nome'] == bebida_nome), None)
@@ -163,7 +159,6 @@ def render_order_placement_screen(db, products, options):
             if not identificador_comanda.strip():
                 st.warning("Por favor, preencha o número da Mesa ou o nome do Cliente.")
             else:
-                # Lógica de Comanda Inteligente (sem FieldValue)
                 query = db.collection("pedidos").where(filter=FieldFilter("identificador", "==", identificador_comanda)).where(filter=FieldFilter("status", "==", "novo")).limit(1)
                 comandas_abertas = list(query.stream())
                 if comandas_abertas:
@@ -183,7 +178,6 @@ def render_order_placement_screen(db, products, options):
                 st.rerun()
     else:
         st.info("O carrinho está vazio. Adicione itens para enviar à comanda.")
-
 
 # --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
 if not st.session_state.get('logged_in', False):
@@ -206,7 +200,6 @@ else:
     st.sidebar.write(f"Cargo: **{st.session_state.get('role')}**")
     st.sidebar.button("Sair", on_click=lambda: st.session_state.clear() or st.rerun())
 
-    # Carrega todos os produtos e opções uma vez para todos os painéis
     try:
         all_products_docs = db.collection("produtos").stream()
         all_products = [p.to_dict() | {'id': p.id} for p in all_products_docs]
@@ -216,11 +209,8 @@ else:
         st.error(f"Erro ao carregar dados do cardápio: {e}")
         st.stop()
 
-    # --- ROTEAMENTO BASEADO NO CARGO ---
-if st.session_state.get('role') == 'admin':
+    if st.session_state.get('role') == 'admin':
         st.title("⚙️ Painel do Administrador")
-        
-        # Carrega os usuários especificamente para o painel de admin
         try:
             all_users_docs = db.collection("usuarios").stream()
             all_users = [u.to_dict() | {'id': u.id} for u in all_users_docs]
@@ -231,37 +221,138 @@ if st.session_state.get('role') == 'admin':
         tab_produtos, tab_opcoes, tab_usuarios = st.tabs(["Produtos", "Opções", "Usuários"])
 
         with tab_produtos:
-            # Mantemos o código que já funcionava para Produtos
-            st.header("Gerenciamento de Produtos")
-            st.info("O gerenciamento de produtos já foi implementado em uma etapa anterior.")
-        
+            if st.session_state.get('editing_product_id'):
+                product_ref = db.collection("produtos").document(st.session_state.editing_product_id)
+                product_data = product_ref.get().to_dict()
+                st.header(f"✏️ Editando: {product_data.get('nome')}")
+                with st.form(key="edit_product_form"):
+                    novo_nome = st.text_input("Nome do Produto", value=product_data.get("nome"))
+                    novo_preco = st.number_input("Preço Base (R$)", value=product_data.get("preco_base"), format="%.2f")
+                    categorias = ["Sanduíches", "Bebidas", "Cremes"]
+                    try:
+                        indice_cat = categorias.index(product_data.get("categoria"))
+                    except (ValueError, TypeError):
+                        indice_cat = 0
+                    nova_categoria = st.selectbox("Categoria", categorias, index=indice_cat)
+                    novo_permite_carne = st.checkbox("Permite escolher carnes?", value=product_data.get("permite_carne"))
+                    novo_permite_adicional = st.checkbox("Permite adicionais (polpa)?", value=product_data.get("permite_adicional"))
+                    
+                    save_btn, cancel_btn = st.columns(2)
+                    if save_btn.form_submit_button("Salvar Alterações", type="primary"):
+                        update_data = {"nome": novo_nome, "preco_base": novo_preco, "categoria": nova_categoria, "permite_carne": novo_permite_carne, "permite_adicional": novo_permite_adicional}
+                        product_ref.update(update_data)
+                        st.session_state.editing_product_id = None
+                        st.success("Produto atualizado!")
+                        st.rerun()
+                    if cancel_btn.form_submit_button("Cancelar"):
+                        st.session_state.editing_product_id = None
+                        st.rerun()
+            else:
+                st.header("Gerenciamento de Produtos")
+                with st.expander("➕ Adicionar Novo Produto"):
+                    with st.form(key="add_product_form", clear_on_submit=True):
+                        st.subheader("Novo Produto")
+                        nome_prod = st.text_input("Nome do Produto")
+                        preco_prod = st.number_input("Preço Base (R$)", format="%.2f", min_value=0.0)
+                        cat_prod = st.selectbox("Categoria", ["Sanduíches", "Bebidas", "Cremes"])
+                        perm_carne = st.checkbox("Permite carnes?")
+                        perm_adic = st.checkbox("Permite adicionais?")
+                        if st.form_submit_button("Adicionar"):
+                            if nome_prod and cat_prod:
+                                db.collection("produtos").add({"nome": nome_prod, "preco_base": preco_prod, "categoria": cat_prod, "permite_carne": perm_carne, "permite_adicional": perm_adic, "disponivel": True})
+                                st.success("Produto adicionado!")
+                                st.rerun()
+                st.header("Lista de Produtos")
+                for prod_data in all_products:
+                    p_id = prod_data.get('id')
+                    cols = st.columns([3, 1, 1, 1])
+                    cols[0].subheader(prod_data.get('nome'))
+                    cols[0].caption(f"Categoria: {prod_data.get('categoria')} | Preço: R$ {prod_data.get('preco_base', 0):.2f}")
+                    if cols[1].button("Editar", key=f"edit_{p_id}"):
+                        st.session_state.editing_product_id = p_id
+                        st.rerun()
+                    disponivel = prod_data.get("disponivel", True)
+                    if disponivel:
+                        if cols[2].button("Pausar", key=f"off_{p_id}"):
+                            db.collection("produtos").document(p_id).update({"disponivel": False})
+                            st.rerun()
+                    else:
+                        if cols[2].button("Ativar", key=f"on_{p_id}", type="primary"):
+                            db.collection("produtos").document(p_id).update({"disponivel": True})
+                            st.rerun()
+                    if cols[3].button("Apagar", key=f"del_{p_id}"):
+                        db.collection("produtos").document(p_id).delete()
+                        st.rerun()
+
         with tab_opcoes:
-            # Mantemos o código que já funcionava para Opções
-            st.header("Gerenciamento de Opções")
-            st.info("O gerenciamento de opções já foi implementado em uma etapa anterior.")
+            if st.session_state.get('editing_option_id'):
+                option_ref = db.collection("opcoes").document(st.session_state.editing_option_id)
+                option_data = option_ref.get().to_dict()
+                st.header(f"✏️ Editando Opção: {option_data.get('nome_opcao')}")
+                with st.form(key="edit_option_form"):
+                    novo_nome_op = st.text_input("Nome da Opção", value=option_data.get("nome_opcao"))
+                    novo_preco_op = st.number_input("Preço Adicional (R$)", value=option_data.get("preco_adicional"), format="%.2f")
+                    tipos = ["Carne", "Polpa", "Outro Adicional"]
+                    try:
+                        indice_tipo = tipos.index(option_data.get("tipo"))
+                    except (ValueError, TypeError):
+                        indice_tipo = 0
+                    novo_tipo = st.selectbox("Tipo de Opção", tipos, index=indice_tipo)
+                    save_btn, cancel_btn = st.columns(2)
+                    if save_btn.form_submit_button("Salvar Alterações", type="primary"):
+                        option_ref.update({"nome_opcao": novo_nome_op, "preco_adicional": novo_preco_op, "tipo": novo_tipo})
+                        st.session_state.editing_option_id = None
+                        st.success("Opção atualizada!")
+                        st.rerun()
+                    if cancel_btn.form_submit_button("Cancelar"):
+                        st.session_state.editing_option_id = None
+                        st.rerun()
+            else:
+                st.header("Gerenciamento de Opções")
+                with st.expander("➕ Adicionar Nova Opção"):
+                    with st.form(key="add_option_form", clear_on_submit=True):
+                        st.subheader("Nova Opção")
+                        nome_op = st.text_input("Nome da Opção")
+                        preco_op = st.number_input("Preço Adicional (R$)", format="%.2f", min_value=0.0)
+                        tipo_op = st.selectbox("Tipo", ["Carne", "Polpa", "Outro Adicional"])
+                        if st.form_submit_button("Adicionar"):
+                            if nome_op and tipo_op:
+                                db.collection("opcoes").add({"nome_opcao": nome_op, "preco_adicional": preco_op, "tipo": tipo_op})
+                                st.success("Opção adicionada!")
+                                st.rerun()
+                st.header("Lista de Opções")
+                for opt_data in all_opcoes:
+                    o_id = opt_data.get('id')
+                    cols = st.columns([3, 1, 1])
+                    cols[0].subheader(opt_data.get('nome_opcao'))
+                    cols[0].caption(f"Tipo: {opt_data.get('tipo')} | Preço Adic.: R$ {opt_data.get('preco_adicional', 0):.2f}")
+                    if cols[1].button("Editar", key=f"edit_op_{o_id}"):
+                        st.session_state.editing_option_id = o_id
+                        st.rerun()
+                    if cols[2].button("Apagar", key=f"del_op_{o_id}"):
+                        db.collection("opcoes").document(o_id).delete()
+                        st.rerun()
 
         with tab_usuarios:
-            # Lógica de edição de usuário (usando o padrão de session_state)
+            st.header("Gerenciamento de Usuários")
             if st.session_state.get('editing_user_id'):
                 user_ref = db.collection("usuarios").document(st.session_state.editing_user_id)
                 user_data = user_ref.get().to_dict()
                 st.header(f"✏️ Editando Usuário: {user_data.get('nome_usuario')}")
                 with st.form(key="edit_user_form"):
                     st.text_input("Nome de Usuário (não pode ser alterado)", value=user_data.get('nome_usuario'), disabled=True)
-                    
                     cargos = ["garcom", "caixa", "cozinha", "admin"]
                     try:
                         indice_cargo = cargos.index(user_data.get("cargo"))
                     except (ValueError, TypeError):
                         indice_cargo = 0
                     novo_cargo = st.selectbox("Cargo", cargos, index=indice_cargo)
-                    
                     nova_senha = st.text_input("Nova Senha (deixe em branco para não alterar)", type="password")
                     
                     save_btn, cancel_btn = st.columns(2)
                     if save_btn.form_submit_button("Salvar Alterações", type="primary"):
                         update_data = {"cargo": novo_cargo}
-                        if nova_senha: # Só atualiza a senha se o campo não estiver vazio
+                        if nova_senha:
                             update_data["senha"] = nova_senha
                         user_ref.update(update_data)
                         st.session_state.editing_user_id = None
@@ -270,10 +361,7 @@ if st.session_state.get('role') == 'admin':
                     if cancel_btn.form_submit_button("Cancelar"):
                         st.session_state.editing_user_id = None
                         st.rerun()
-            
-            # Lógica para adicionar e listar usuários
             else:
-                st.header("Gerenciamento de Usuários")
                 with st.expander("➕ Adicionar Novo Usuário"):
                     with st.form(key="add_user_form", clear_on_submit=True):
                         st.subheader("Novo Usuário")
@@ -285,60 +373,50 @@ if st.session_state.get('role') == 'admin':
                                 db.collection("usuarios").add({"nome_usuario": novo_user_nome, "senha": novo_user_senha, "cargo": novo_user_cargo})
                                 st.success(f"Usuário '{novo_user_nome}' criado!")
                                 st.rerun()
-                            else:
-                                st.warning("Todos os campos são obrigatórios.")
-
                 st.header("Lista de Usuários")
                 for user_data in all_users:
                     u_id = user_data.get('id')
                     cols = st.columns([3, 1, 1])
-                    
                     cols[0].subheader(user_data.get('nome_usuario'))
                     cols[0].caption(f"Cargo: {user_data.get('cargo')}")
-                    
                     if cols[1].button("Editar", key=f"edit_user_{u_id}"):
                         st.session_state.editing_user_id = u_id
                         st.rerun()
-                        
                     if cols[2].button("Apagar", key=f"del_user_{u_id}"):
-                        # Prevenção para o admin não se apagar
                         if user_data.get('nome_usuario') == st.session_state.username:
                             st.warning("Não é possível apagar o próprio usuário.")
                         else:
                             db.collection("usuarios").document(u_id).delete()
-                            st.success(f"Usuário '{user_data.get('nome_usuario')}' apagado.")
                             st.rerun()
 
-        with tab_usuarios:
-            st.info("A funcionalidade de gerenciamento de Usuários será implementada aqui.")
+    elif st.session_state.get('role') == 'garcom':
+        products_disponiveis = [p for p in all_products if p.get("disponivel", True)]
+        render_order_placement_screen(db, products_disponiveis, all_opcoes)
 
     elif st.session_state.get('role') == 'caixa':
         st.title("💰 Painel do Caixa")
         tab_ver_contas, tab_lancar_pedido = st.tabs(["Ver Contas Abertas", "Lançar Novo Pedido"])
         with tab_ver_contas:
             st.header("Contas Pendentes de Pagamento")
-            try:
-                pedidos_ref = db.collection("pedidos").where(filter=FieldFilter("status", "==", "novo")).order_by("timestamp", direction=firestore.Query.ASCENDING).stream()
-                pedidos_a_pagar = [doc.to_dict() | {'id': doc.id} for doc in pedidos_ref]
-                if not pedidos_a_pagar:
-                    st.success("Nenhuma conta pendente de pagamento. Tudo em dia! ✅")
-                else:
-                    for pedido in pedidos_a_pagar:
-                        identificador_label = f"**{pedido.get('identificador')}**"
-                        with st.expander(f"{identificador_label} - Total: R$ {pedido.get('total', 0):.2f}"):
-                            st.subheader("Itens Consumidos:")
-                            for item in pedido.get('itens', []):
-                                st.write(f" - {item.get('quantidade')}x **{item['nome']}**")
-                                if item.get('obs'):
-                                    st.info(f"   > Obs: {item['obs']}")
-                            st.write("---")
-                            if st.button("Confirmar Pagamento e Enviar para Cozinha", key=f"pay_{pedido['id']}", type="primary"):
-                                db.collection("pedidos").document(pedido['id']).update({"status": "pago"})
-                                st.success(f"Pedido de {identificador_label} pago e enviado para a cozinha!")
-                                st.balloons()
-                                st.rerun()
-            except Exception as e:
-                st.error(f"Ocorreu um erro ao buscar contas: {e}")
+            pedidos_ref = db.collection("pedidos").where(filter=FieldFilter("status", "==", "novo")).order_by("timestamp", direction=firestore.Query.ASCENDING).stream()
+            pedidos_a_pagar = [doc.to_dict() | {'id': doc.id} for doc in pedidos_ref]
+            if not pedidos_a_pagar:
+                st.success("Nenhuma conta pendente de pagamento. Tudo em dia! ✅")
+            else:
+                for pedido in pedidos_a_pagar:
+                    identificador_label = f"**{pedido.get('identificador')}**"
+                    with st.expander(f"{identificador_label} - Total: R$ {pedido.get('total', 0):.2f}"):
+                        st.subheader("Itens Consumidos:")
+                        for item in pedido.get('itens', []):
+                            st.write(f" - {item.get('quantidade')}x **{item['nome']}**")
+                            if item.get('obs'):
+                                st.info(f"   > Obs: {item['obs']}")
+                        st.write("---")
+                        if st.button("Confirmar Pagamento e Enviar para Cozinha", key=f"pay_{pedido['id']}", type="primary"):
+                            db.collection("pedidos").document(pedido['id']).update({"status": "pago"})
+                            st.success(f"Pedido de {identificador_label} pago e enviado para a cozinha!")
+                            st.balloons()
+                            st.rerun()
         with tab_lancar_pedido:
             products_disponiveis = [p for p in all_products if p.get("disponivel", True)]
             render_order_placement_screen(db, products_disponiveis, all_opcoes)
