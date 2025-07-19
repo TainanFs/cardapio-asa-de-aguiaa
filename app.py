@@ -2,6 +2,7 @@ import streamlit as st
 import os
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
+from google.cloud.firestore import FieldValue
 from datetime import datetime, time
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
@@ -12,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# --- LÓGICA DE CONEXÃO COM O BANCO DE DADOS ---
+# --- LÓGICA DE CONEXÃO ---
 try:
     if hasattr(st, 'secrets') and "firestore_credentials" in st.secrets:
         creds_dict = st.secrets["firestore_credentials"]
@@ -22,16 +23,18 @@ try:
         chave_path = os.path.join(script_dir, "firestore-chave.json")
         db = firestore.Client.from_service_account_json(chave_path)
 except Exception as e:
-    st.error("🔴 Falha na conexão com o banco de dados.")
-    st.error(f"Ocorreu um erro: {e}")
+    st.error(f"🔴 Falha na conexão com o banco de dados: {e}")
     st.stop()
 
 # --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
-if 'logged_in' not in st.session_state:
-    st.session_state.update({
-        'logged_in': False, 'role': None, 'username': None, 'cart': [],
-        'table_number': 1, 'client_name': ""
-    })
+default_values = {
+    'logged_in': False, 'role': None, 'username': None, 'cart': [],
+    'table_number': 1, 'client_name': "",
+    'editing_product_id': None, 'editing_option_id': None
+}
+for key, value in default_values.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
 # --- FUNÇÕES DE LÓGICA E TELAS ---
 def check_login(username, password):
@@ -42,7 +45,7 @@ def check_login(username, password):
         return True, user_list[0].get("cargo")
     return False, None
 
-def render_order_placement_screen(db, all_products, all_opcoes):
+def render_order_placement_screen(db, products, options):
     st.title(f"👨‍🍳 Lançar Pedido - {st.session_state.get('username')}")
     tipo_comanda = st.radio("Tipo de Comanda:", ["Mesa", "Cliente"], horizontal=True, key="tipo_comanda_launcher")
     identificador_comanda = ""
@@ -58,7 +61,7 @@ def render_order_placement_screen(db, all_products, all_opcoes):
 
     with tab_sanduiches:
         st.subheader("Montar Sanduíche")
-        sanduiches_base = [p for p in all_products if p.get('categoria') == 'Sanduíches']
+        sanduiches_base = [p for p in products if p.get('categoria') == 'Sanduíches']
         if not sanduiches_base:
             st.info("Nenhum 'Sanduíche' cadastrado.")
         else:
@@ -68,7 +71,7 @@ def render_order_placement_screen(db, all_products, all_opcoes):
                 nome_final_sb = base_selecionada['nome']
                 preco_final_sb = base_selecionada.get('preco_base', 0)
                 if base_selecionada.get('permite_carne'):
-                    carnes_disponiveis = [o for o in all_opcoes if o.get('tipo') == 'Carne']
+                    carnes_disponiveis = [o for o in options if o.get('tipo') == 'Carne']
                     if carnes_disponiveis:
                         nomes_carnes = [c['nome_opcao'] for c in carnes_disponiveis]
                         opcoes_carne_primaria = ["Nenhuma"] + nomes_carnes
@@ -95,8 +98,9 @@ def render_order_placement_screen(db, all_products, all_opcoes):
                     st.rerun()
 
     with tab_cremes:
+        # Lógica completa para Cremes
         st.subheader("Montar Creme")
-        cremes_base = [p for p in all_products if p.get('categoria') == 'Cremes']
+        cremes_base = [p for p in products if p.get('categoria') == 'Cremes']
         if not cremes_base:
             st.info("Nenhum 'Creme' cadastrado.")
         else:
@@ -106,7 +110,7 @@ def render_order_placement_screen(db, all_products, all_opcoes):
                 nome_final_cr = creme_nome
                 preco_final_cr = creme_selecionado.get('preco_base', 0)
                 if creme_selecionado.get('permite_adicional'):
-                    adicionais_disponiveis = [o for o in all_opcoes if o.get('tipo') == 'Polpa']
+                    adicionais_disponiveis = [o for o in options if o.get('tipo') == 'Polpa']
                     if adicionais_disponiveis:
                         nomes_adicionais = st.multiselect("Escolha os adicionais:", [a['nome_opcao'] for a in adicionais_disponiveis], key="cr_adicionais_launcher")
                         if nomes_adicionais:
@@ -122,8 +126,9 @@ def render_order_placement_screen(db, all_products, all_opcoes):
                     st.rerun()
 
     with tab_bebidas:
+        # Lógica completa para Bebidas
         st.subheader("Escolher Bebida")
-        bebidas = [p for p in all_products if p.get('categoria') == 'Bebidas']
+        bebidas = [p for p in products if p.get('categoria') == 'Bebidas']
         if not bebidas:
             st.info("Nenhuma 'Bebida' cadastrada.")
         else:
@@ -158,6 +163,7 @@ def render_order_placement_screen(db, all_products, all_opcoes):
             if not identificador_comanda.strip():
                 st.warning("Por favor, preencha o número da Mesa ou o nome do Cliente.")
             else:
+                # Lógica de Comanda Inteligente (sem FieldValue)
                 query = db.collection("pedidos").where(filter=FieldFilter("identificador", "==", identificador_comanda)).where(filter=FieldFilter("status", "==", "novo")).limit(1)
                 comandas_abertas = list(query.stream())
                 if comandas_abertas:
@@ -177,6 +183,7 @@ def render_order_placement_screen(db, all_products, all_opcoes):
                 st.rerun()
     else:
         st.info("O carrinho está vazio. Adicione itens para enviar à comanda.")
+
 
 # --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
 if not st.session_state.get('logged_in', False):
@@ -199,272 +206,134 @@ else:
     st.sidebar.write(f"Cargo: **{st.session_state.get('role')}**")
     st.sidebar.button("Sair", on_click=lambda: st.session_state.clear() or st.rerun())
 
+    # Carrega todos os produtos e opções uma vez para todos os painéis
     try:
-        all_products_query = db.collection("produtos").where(filter=FieldFilter("disponivel", "==", True)).stream()
-        all_products = [p.to_dict() | {'id': p.id} for p in all_products_query]
-        all_opcoes_query = db.collection("opcoes").stream()
-        all_opcoes = [o.to_dict() | {'id': o.id} for o in all_opcoes_query]
+        all_products_docs = db.collection("produtos").stream()
+        all_products = [p.to_dict() | {'id': p.id} for p in all_products_docs]
+        all_opcoes_docs = db.collection("opcoes").stream()
+        all_opcoes = [o.to_dict() | {'id': o.id} for o in all_opcoes_docs]
     except Exception as e:
         st.error(f"Erro ao carregar dados do cardápio: {e}")
         st.stop()
 
-        # PAINEL DO ADMIN (SUBSTITUA POR ESTE BLOCO COMPLETO E CORRIGIDO)
+    # --- ROTEAMENTO BASEADO NO CARGO ---
     if st.session_state.get('role') == 'admin':
         st.title("⚙️ Painel do Administrador")
-
-        # Inicializa o estado de edição se não existir
-        if 'editing_product_id' not in st.session_state:
-            st.session_state.editing_product_id = None
-        if 'editing_option_id' not in st.session_state:
-            st.session_state.editing_option_id = None
-
         tab_produtos, tab_opcoes, tab_usuarios = st.tabs(["Produtos", "Opções", "Usuários"])
 
-        # --- ABA DE PRODUTOS ---
         with tab_produtos:
-            # Se estamos editando um produto, mostra o formulário de edição
-            if st.session_state.editing_product_id:
-                product_to_edit_ref = db.collection("produtos").document(st.session_state.editing_product_id)
-                product_to_edit = product_to_edit_ref.get().to_dict()
-                
-                st.header(f"✏️ Editando: {product_to_edit.get('nome')}")
-                with st.form(key="edit_product_form_main"):
-                    novo_nome = st.text_input("Nome do Produto", value=product_to_edit.get("nome"))
-                    novo_preco = st.number_input("Preço Base (R$)", value=product_to_edit.get("preco_base"), format="%.2f")
-                    nova_categoria = st.selectbox("Categoria", ["Sanduíches", "Bebidas", "Cremes"], index=["Sanduíches", "Bebidas", "Cremes"].index(product_to_edit.get("categoria")))
-                    novo_permite_carne = st.checkbox("Permite escolher carnes?", value=product_to_edit.get("permite_carne"))
-                    novo_permite_adicional = st.checkbox("Permite adicionais (polpa)?", value=product_to_edit.get("permite_adicional"))
+            if st.session_state.get('editing_product_id'):
+                product_ref = db.collection("produtos").document(st.session_state.editing_product_id)
+                product_data = product_ref.get().to_dict()
+                st.header(f"✏️ Editando: {product_data.get('nome')}")
+                with st.form(key="edit_product_form"):
+                    novo_nome = st.text_input("Nome", value=product_data.get("nome"))
+                    novo_preco = st.number_input("Preço Base (R$)", value=product_data.get("preco_base"), format="%.2f")
+                    categorias = ["Sanduíches", "Bebidas", "Cremes"]
+                    indice_cat = categorias.index(product_data.get("categoria")) if product_data.get("categoria") in categorias else 0
+                    nova_categoria = st.selectbox("Categoria", categorias, index=indice_cat)
+                    novo_permite_carne = st.checkbox("Permite escolher carnes?", value=product_data.get("permite_carne"))
+                    novo_permite_adicional = st.checkbox("Permite adicionais (polpa)?", value=product_data.get("permite_adicional"))
                     
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.form_submit_button("Salvar Alterações", type="primary"):
-                            update_data = {"nome": novo_nome, "preco_base": novo_preco, "categoria": nova_categoria, "permite_carne": novo_permite_carne, "permite_adicional": novo_permite_adicional}
-                            product_to_edit_ref.update(update_data)
-                            st.session_state.editing_product_id = None
-                            st.success("Produto atualizado!")
-                            st.rerun()
-                    with col2:
-                        if st.form_submit_button("Cancelar"):
-                            st.session_state.editing_product_id = None
-                            st.rerun()
-            
-            # Se não estamos editando, mostra a lista e o form de adicionar
+                    save_btn, cancel_btn = st.columns(2)
+                    if save_btn.form_submit_button("Salvar Alterações", type="primary"):
+                        update_data = {"nome": novo_nome, "preco_base": novo_preco, "categoria": nova_categoria, "permite_carne": novo_permite_carne, "permite_adicional": novo_permite_adicional}
+                        product_ref.update(update_data)
+                        st.session_state.editing_product_id = None
+                        st.success("Produto atualizado!")
+                        st.rerun()
+                    if cancel_btn.form_submit_button("Cancelar"):
+                        st.session_state.editing_product_id = None
+                        st.rerun()
             else:
                 st.header("Gerenciamento de Produtos")
                 with st.expander("➕ Adicionar Novo Produto"):
                     with st.form(key="add_product_form", clear_on_submit=True):
-                        # ... (código do formulário de adicionar produto que já funcionava) ...
-                
-                st.write("---")
-                st.header("Lista de Produtos Cadastrados")
-                try:
-                    produtos_ref = db.collection("produtos").stream()
-                    for produto in produtos_ref:
-                        p_data = produto.to_dict()
-                        p_id = produto.id
-                        col1, col2, col3, col4 = st.columns([2, 0.5, 0.8, 0.8])
-                        with col1:
-                            st.subheader(p_data.get("nome"))
-                            st.caption(f"Categoria: {p_data.get('categoria')} | Preço: R$ {p_data.get('preco_base', 0):.2f}")
-                        with col2:
-                            if st.button("Editar", key=f"edit_{p_id}"):
-                                st.session_state.editing_product_id = p_id
+                        st.subheader("Novo Produto")
+                        nome_prod = st.text_input("Nome do Produto")
+                        preco_prod = st.number_input("Preço Base (R$)", format="%.2f", min_value=0.0)
+                        cat_prod = st.selectbox("Categoria", ["Sanduíches", "Bebidas", "Cremes"])
+                        perm_carne = st.checkbox("Permite carnes?")
+                        perm_adic = st.checkbox("Permite adicionais?")
+                        if st.form_submit_button("Adicionar"):
+                            if nome_prod and cat_prod:
+                                db.collection("produtos").add({"nome": nome_prod, "preco_base": preco_prod, "categoria": cat_prod, "permite_carne": perm_carne, "permite_adicional": perm_adic, "disponivel": True})
+                                st.success("Produto adicionado!")
                                 st.rerun()
-                        with col3:
-                            disponivel = p_data.get("disponivel", True)
-                            if disponivel:
-                                if st.button("Indisponível", key=f"off_{p_id}"):
-                                    db.collection("produtos").document(p_id).update({"disponivel": False})
-                                    st.rerun()
-                            else:
-                                if st.button("Disponível", key=f"on_{p_id}", type="primary"):
-                                    db.collection("produtos").document(p_id).update({"disponivel": True})
-                                    st.rerun()
-                        with col4:
-                            if st.button("Apagar", key=f"del_{p_id}"):
-                                db.collection("produtos").document(p_id).delete()
-                                st.rerun()
-                except Exception as e:
-                    st.error(f"Erro ao buscar produtos: {e}")
+                st.header("Lista de Produtos")
+                for prod_data in all_products:
+                    p_id = prod_data.get('id')
+                    cols = st.columns([3, 1, 1, 1])
+                    cols[0].subheader(prod_data.get('nome'))
+                    cols[0].caption(f"Categoria: {prod_data.get('categoria')} | Preço: R$ {prod_data.get('preco_base', 0):.2f}")
+                    if cols[1].button("Editar", key=f"edit_{p_id}"):
+                        st.session_state.editing_product_id = p_id
+                        st.rerun()
+                    disponivel = prod_data.get("disponivel", True)
+                    if disponivel:
+                        if cols[2].button("Indisponível", key=f"off_{p_id}"):
+                            db.collection("produtos").document(p_id).update({"disponivel": False})
+                            st.rerun()
+                    else:
+                        if cols[2].button("Disponível", key=f"on_{p_id}", type="primary"):
+                            db.collection("produtos").document(p_id).update({"disponivel": True})
+                            st.rerun()
+                    if cols[3].button("Apagar", key=f"del_{p_id}"):
+                        db.collection("produtos").document(p_id).delete()
+                        st.rerun()
 
-        # --- ABA DE OPÇÕES (REPLICANDO O MESMO PADRÃO) ---
         with tab_opcoes:
-            if st.session_state.editing_option_id:
-                option_to_edit_ref = db.collection("opcoes").document(st.session_state.editing_option_id)
-                option_to_edit = option_to_edit_ref.get().to_dict()
-                st.header(f"✏️ Editando Opção: {option_to_edit.get('nome_opcao')}")
-                with st.form(key="edit_option_form_main"):
-                    # ... (formulário de edição de opção) ...
+            if st.session_state.get('editing_option_id'):
+                option_ref = db.collection("opcoes").document(st.session_state.editing_option_id)
+                option_data = option_ref.get().to_dict()
+                st.header(f"✏️ Editando Opção: {option_data.get('nome_opcao')}")
+                with st.form(key="edit_option_form"):
+                    novo_nome_op = st.text_input("Nome da Opção", value=option_data.get("nome_opcao"))
+                    novo_preco_op = st.number_input("Preço Adicional (R$)", value=option_data.get("preco_adicional"), format="%.2f")
+                    tipos = ["Carne", "Polpa", "Outro Adicional"]
+                    indice_tipo = tipos.index(option_data.get("tipo")) if option_data.get("tipo") in tipos else 0
+                    novo_tipo = st.selectbox("Tipo de Opção", tipos, index=indice_tipo)
+                    save_btn, cancel_btn = st.columns(2)
+                    if save_btn.form_submit_button("Salvar Alterações", type="primary"):
+                        option_ref.update({"nome_opcao": novo_nome_op, "preco_adicional": novo_preco_op, "tipo": novo_tipo})
+                        st.session_state.editing_option_id = None
+                        st.success("Opção atualizada!")
+                        st.rerun()
+                    if cancel_btn.form_submit_button("Cancelar"):
+                        st.session_state.editing_option_id = None
+                        st.rerun()
             else:
                 st.header("Gerenciamento de Opções")
                 with st.expander("➕ Adicionar Nova Opção"):
                     with st.form(key="add_option_form", clear_on_submit=True):
-                        # ... (formulário de adicionar opção) ...
-                st.write("---")
-                st.header("Lista de Opções Cadastradas")
-                try:
-                    opcoes_ref = db.collection("opcoes").stream()
-                    for opcao in opcoes_ref:
-                        # ... (lógica de listar e botões para opções) ...
-                except Exception as e:
-                    st.error(f"Erro ao buscar opções: {e}")
+                        st.subheader("Nova Opção")
+                        nome_op = st.text_input("Nome da Opção")
+                        preco_op = st.number_input("Preço Adicional (R$)", format="%.2f", min_value=0.0)
+                        tipo_op = st.selectbox("Tipo", ["Carne", "Polpa", "Outro Adicional"])
+                        if st.form_submit_button("Adicionar"):
+                            if nome_op and tipo_op:
+                                db.collection("opcoes").add({"nome_opcao": nome_op, "preco_adicional": preco_op, "tipo": tipo_op})
+                                st.success("Opção adicionada!")
+                                st.rerun()
+                st.header("Lista de Opções")
+                for opt_data in all_opcoes:
+                    o_id = opt_data.get('id')
+                    cols = st.columns([3, 1, 1])
+                    cols[0].subheader(opt_data.get('nome_opcao'))
+                    cols[0].caption(f"Tipo: {opt_data.get('tipo')} | Preço Adic.: R$ {opt_data.get('preco_adicional', 0):.2f}")
+                    if cols[1].button("Editar", key=f"edit_op_{o_id}"):
+                        st.session_state.editing_option_id = o_id
+                        st.rerun()
+                    if cols[2].button("Apagar", key=f"del_op_{o_id}"):
+                        db.collection("opcoes").document(o_id).delete()
+                        st.rerun()
 
         with tab_usuarios:
             st.info("A funcionalidade de gerenciamento de Usuários será implementada aqui.")
 
-        # --- ABA DE OPÇÕES (CÓDIGO COMPLETO) ---
-        with tab_opcoes:
-            st.header("Gerenciamento de Opções")
-            with st.expander("➕ Adicionar Nova Opção", expanded=False):
-                with st.form(key="add_option_form", clear_on_submit=True):
-                    st.subheader("Detalhes da Nova Opção")
-                    nome_opcao = st.text_input("Nome da Opção (Ex: Bacon, Polpa de Morango)")
-                    preco_adicional = st.number_input("Preço Adicional (R$)", format="%.2f", step=0.50, min_value=0.0)
-                    tipo_opcao = st.selectbox("Tipo de Opção", ["Carne", "Polpa", "Outro Adicional"])
-                    if st.form_submit_button("Adicionar Opção"):
-                        if nome_opcao and tipo_opcao:
-                            opcao_data = {"nome_opcao": nome_opcao, "preco_adicional": preco_adicional, "tipo": tipo_opcao}
-                            db.collection("opcoes").add(opcao_data)
-                            st.success(f"Opção '{nome_opcao}' adicionada!")
-                            st.rerun()
-                        else:
-                            st.warning("O Nome e o Tipo são obrigatórios.")
-            st.write("---")
-            st.header("Lista de Opções Cadastradas")
-            try:
-                todas_opcoes_ref = db.collection("opcoes").stream()
-                lista_opcoes = list(todas_opcoes_ref)
-                if not lista_opcoes:
-                    st.info("Nenhuma opção cadastrada ainda.")
-                else:
-                    for opcao in lista_opcoes:
-                        o_data = opcao.to_dict()
-                        o_id = opcao.id
-                        col1, col2 = st.columns([2, 1.2])
-                        with col1:
-                            st.subheader(o_data.get("nome_opcao", "Nome não encontrado"))
-                            st.write(f"Tipo: **{o_data.get('tipo')}** | Preço Adicional: **R$ {o_data.get('preco_adicional', 0):.2f}**")
-                        with col2:
-                            botoes_col1, botoes_col2 = st.columns(2)
-                            with botoes_col1:
-                                with st.popover("✏️"):
-                                    with st.form(key=f"edit_op_{o_id}"):
-                                        st.subheader(f"Editando: {o_data.get('nome_opcao')}")
-                                        novo_nome_op = st.text_input("Novo nome", value=o_data.get("nome_opcao"), key=f"name_op_{o_id}")
-                                        novo_preco_op = st.number_input("Novo Preço", value=o_data.get("preco_adicional"), format="%.2f", key=f"price_op_{o_id}")
-                                        if st.form_submit_button("Salvar"):
-                                            db.collection("opcoes").document(o_id).update({"nome_opcao": novo_nome_op, "preco_adicional": novo_preco_op})
-                                            st.rerun()
-                            with botoes_col2:
-                                with st.popover("🗑️"):
-                                    st.write(f"Apagar '{o_data.get('nome_opcao')}' permanentemente?")
-                                    if st.button("Confirmar Exclusão", key=f"del_op_{o_id}", type="primary"):
-                                        db.collection("opcoes").document(o_id).delete()
-                                        st.rerun()
-            except Exception as e:
-                st.error(f"Erro ao buscar opções: {e}")
-
-        with tab_usuarios:
-            st.info("A funcionalidade de gerenciamento de Usuários será implementada aqui.")
-
-            # Lógica para Listar, Editar e Apagar Opções
-            try:
-                todas_opcoes_ref = db.collection("opcoes").stream()
-                lista_opcoes = list(todas_opcoes_ref)
-
-                if not lista_opcoes:
-                    st.info("Nenhuma opção cadastrada ainda.")
-                else:
-                    for opcao in lista_opcoes:
-                        o_data = opcao.to_dict()
-                        o_id = opcao.id
-
-                        col1, col2 = st.columns([2, 1.2])
-
-                        with col1:
-                            st.subheader(o_data.get("nome_opcao", "Nome não encontrado"))
-                            st.write(f"Tipo: **{o_data.get('tipo')}** | Preço Adicional: **R$ {o_data.get('preco_adicional', 0):.2f}**")
-                        
-                        with col2:
-                            botoes_col1, botoes_col2 = st.columns(2)
-
-                            # Botão Editar
-                            with botoes_col1:
-                                with st.popover("✏️"):
-                                    with st.form(key=f"edit_op_{o_id}"):
-                                        st.subheader(f"Editando: {o_data.get('nome_opcao')}")
-                                        novo_nome_op = st.text_input("Novo nome", value=o_data.get("nome_opcao"), key=f"name_op_{o_id}")
-                                        novo_preco_op = st.number_input("Novo Preço", value=o_data.get("preco_adicional"), format="%.2f", key=f"price_op_{o_id}")
-                                        if st.form_submit_button("Salvar"):
-                                            db.collection("opcoes").document(o_id).update({"nome_opcao": novo_nome_op, "preco_adicional": novo_preco_op})
-                                            st.rerun()
-
-                            # Botão de Apagar com Confirmação
-                            with botoes_col2:
-                                with st.popover("🗑️"):
-                                    st.write(f"Apagar '{o_data.get('nome_opcao')}' permanentemente?")
-                                    if st.button("Confirmar Exclusão", key=f"del_op_{o_id}", type="primary"):
-                                        db.collection("opcoes").document(o_id).delete()
-                                        st.rerun()
-            except Exception as e:
-                st.error(f"Erro ao buscar opções: {e}")
-
-        with tab_usuarios:
-            st.info("A funcionalidade de gerenciamento de Usuários será implementada aqui.")
-            # --- Lógica para Listar e Editar Produtos ---
-            try:
-                todos_produtos_ref = db.collection("produtos").stream()
-                lista_produtos = [p for p in todos_produtos_ref] # Materializa a lista
-
-                if not lista_produtos:
-                    st.info("Nenhum produto cadastrado ainda.")
-                else:
-                    for produto in lista_produtos:
-                        p_data = produto.to_dict()
-                        p_id = produto.id
-
-                        col1, col2, col3 = st.columns([2, 1, 1])
-                        
-                        with col1:
-                            st.subheader(p_data.get("nome", "Nome não encontrado"))
-                            st.write(f"Categoria: **{p_data.get('categoria')}** | Preço: **R$ {p_data.get('preco_base', 0):.2f}**")
-
-                        with col2:
-                            # Lógica para editar - aqui usamos um formulário dentro de um st.popover
-                            with st.popover("✏️ Editar"):
-                                with st.form(key=f"edit_{p_id}"):
-                                    st.subheader(f"Editando: {p_data.get('nome')}")
-                                    novo_nome = st.text_input("Novo nome", value=p_data.get("nome"), key=f"name_{p_id}")
-                                    novo_preco = st.number_input("Novo Preço Base (R$)", value=p_data.get("preco_base"), format="%.2f", step=0.50, min_value=0.0, key=f"price_{p_id}")
-                                    
-                                    if st.form_submit_button("Salvar Alterações"):
-                                        update_data = {"nome": novo_nome, "preco_base": novo_preco}
-                                        db.collection("produtos").document(p_id).update(update_data)
-                                        st.success("Produto atualizado!")
-                                        st.rerun()
-                        
-                        with col3:
-                            # Lógica para ativar/desativar
-                            disponivel = p_data.get("disponivel", True)
-                            if disponivel:
-                                if st.button("Tornar Indisponível", key=f"off_{p_id}", type="secondary"):
-                                    db.collection("produtos").document(p_id).update({"disponivel": False})
-                                    st.rerun()
-                            else:
-                                if st.button("✅ Tornar Disponível", key=f"on_{p_id}", type="primary"):
-                                    db.collection("produtos").document(p_id).update({"disponivel": True})
-                                    st.rerun()
-
-            except Exception as e:
-                st.error(f"Erro ao buscar produtos: {e}")
-
-        with tab_opcoes:
-            st.info("A funcionalidade de gerenciamento de Opções (carnes, polpas) será implementada aqui.")
-
-        with tab_usuarios:
-            st.info("A funcionalidade de gerenciamento de Usuários (garçom, caixa) será implementada aqui.")
     elif st.session_state.get('role') == 'garcom':
-        render_order_placement_screen(db, all_products, all_opcoes)
+        products_disponiveis = [p for p in all_products if p.get("disponivel", True)]
+        render_order_placement_screen(db, products_disponiveis, all_opcoes)
 
     elif st.session_state.get('role') == 'caixa':
         st.title("💰 Painel do Caixa")
@@ -494,7 +363,8 @@ else:
             except Exception as e:
                 st.error(f"Ocorreu um erro ao buscar contas: {e}")
         with tab_lancar_pedido:
-            render_order_placement_screen(db, all_products, all_opcoes)
+            products_disponiveis = [p for p in all_products if p.get("disponivel", True)]
+            render_order_placement_screen(db, products_disponiveis, all_opcoes)
 
     elif st.session_state.get('role') == 'cozinha':
         st.title("📈 Relatório de Pedidos do Dia")
@@ -524,6 +394,5 @@ else:
         except Exception as e:
             st.error(f"Ocorreu um erro ao gerar o relatório: {e}")
             st.warning("Se o erro mencionar um 'índice', por favor, clique no link na mensagem de erro para criá-lo no Firebase e tente novamente.")
-
     else:
-        st.error("Seu cargo não foi reconhecido ou não possui um painel definido.")
+        st.error("Seu cargo não foi reconhecido ou sem painel definido.")
