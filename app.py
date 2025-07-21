@@ -440,10 +440,10 @@ else:
                                 if st.button("✏️ Editar Comanda", key=f"edit_{p_id}"):
                                     st.session_state.editing_order_id = p_id
                                     st.rerun()
-        with tab_lancar_pedido:
-            products_disponiveis = [p for p in all_products if p.get("disponivel", True)]
-            render_order_placement_screen(db, products_disponiveis, all_opcoes)
+          with tab_lancar_pedido:
+                render_order_placement_screen(db, all_products, all_opcoes)
 
+    
     elif st.session_state.get('role') == 'cozinha':
         st.title("📈 Relatório de Pedidos do Dia")
         try:
