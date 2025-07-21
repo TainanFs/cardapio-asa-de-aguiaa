@@ -408,7 +408,13 @@ else:
         tab_ver_contas, tab_lancar_pedido = st.tabs(["Ver Contas Abertas", "Lançar Novo Pedido"])
         with tab_ver_contas:
             st.header("Contas Pendentes de Pagamento")
-            auto_refresh = st.checkbox("Atualizar automaticamente a cada 15 segundos", value=True)
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.header("Contas Pendentes de Pagamento")
+            with col2:
+                # O botão de atualização manual
+                if st.button("Atualizar Lista 🔄"):
+                    st.rerun() # Força a recarga da página
             pedidos_ref = db.collection("pedidos").where(filter=FieldFilter("status", "==", "novo")).order_by("timestamp", direction=firestore.Query.ASCENDING).stream()
             pedidos_a_pagar = [doc.to_dict() | {'id': doc.id} for doc in pedidos_ref]
             if not pedidos_a_pagar:
