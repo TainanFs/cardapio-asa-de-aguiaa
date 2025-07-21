@@ -413,7 +413,7 @@ else:
                 st.header("Contas Pendentes de Pagamento")
             with col2:
                 # O botão de atualização manual
-                if st.button("Atualizar Lista 🔄"):
+                if st.button("Atualizar Comandas 🔄"):
                     st.rerun() # Força a recarga da página
             pedidos_ref = db.collection("pedidos").where(filter=FieldFilter("status", "==", "novo")).order_by("timestamp", direction=firestore.Query.ASCENDING).stream()
             pedidos_a_pagar = [doc.to_dict() | {'id': doc.id} for doc in pedidos_ref]
