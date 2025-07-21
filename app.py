@@ -407,7 +407,6 @@ else:
         st.title("💰 Painel do Caixa")
         tab_ver_contas, tab_lancar_pedido = st.tabs(["Ver Contas Abertas", "Lançar Novo Pedido"])
         with tab_ver_contas:
-            st.header("Contas Pendentes de Pagamento")
             col1, col2 = st.columns([3, 1])
             with col1:
                 st.header("Contas Pendentes de Pagamento")
