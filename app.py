@@ -428,49 +428,15 @@ else:
                             if item.get('obs'):
                                 st.info(f"   > Obs: {item['obs']}")
                         st.write("---")
-                        # Se não estamos editando, mostra a lista de contas normal
-        else:
-            tab_ver_contas, tab_lancar_pedido = st.tabs(["Ver Contas Abertas", "Lançar Novo Pedido"])
-            with tab_ver_contas:
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.header("Contas Pendentes de Pagamento")
-                with col2:
-                    if st.button("Atualizar Lista 🔄"):
-                        st.rerun()
+                        if st.button("Confirmar Pagamento e Enviar para Cozinha", key=f"pay_{pedido['id']}", type="primary"):
+                            db.collection("pedidos").document(pedido['id']).update({"status": "pago"})
+                            st.success(f"Pedido de {identificador_label} pago e enviado para a cozinha!")
+                            st.balloons()
+                            st.rerun()
+        with tab_lancar_pedido:
+            products_disponiveis = [p for p in all_products if p.get("disponivel", True)]
+            render_order_placement_screen(db, products_disponiveis, all_opcoes)
 
-                pedidos_ref = db.collection("pedidos").where(filter=FieldFilter("status", "==", "novo")).order_by("timestamp", direction=firestore.Query.ASCENDING).stream()
-                pedidos_a_pagar = [doc.to_dict() | {'id': doc.id} for doc in pedidos_ref]
-                if not pedidos_a_pagar:
-                    st.success("Nenhuma conta pendente de pagamento. Tudo em dia! ✅")
-                else:
-                    for pedido in pedidos_a_pagar:
-                        p_id = pedido['id']
-                        identificador_label = f"**{pedido.get('identificador')}**"
-                        with st.expander(f"{identificador_label} - Total: R$ {pedido.get('total', 0):.2f}"):
-                            st.subheader("Itens Consumidos:")
-                            for item in pedido.get('itens', []):
-                                st.write(f" - {item.get('quantidade')}x **{item['nome']}**")
-                                if item.get('obs'):
-                                    st.info(f"   > Obs: {item['obs']}")
-                            
-                            st.write("---")
-                            # Botões de ação dentro da comanda
-                            botoes_col1, botoes_col2 = st.columns(2)
-                            with botoes_col1:
-                                if st.button("Confirmar Pagamento", key=f"pay_{p_id}", type="primary"):
-                                    db.collection("pedidos").document(p_id).update({"status": "pago"})
-                                    st.success(f"Pedido de {identificador_label} pago e enviado para a cozinha!")
-                                    st.balloons()
-                                    st.rerun()
-                            with botoes_col2:
-                                if st.button("✏️ Editar Comanda", key=f"edit_{p_id}"):
-                                    st.session_state.editing_order_id = p_id
-                                    st.rerun()
-            with tab_lancar_pedido:
-                render_order_placement_screen(db, all_products, all_opcoes)
-
-    
     elif st.session_state.get('role') == 'cozinha':
         st.title("📈 Relatório de Pedidos do Dia")
         try:
