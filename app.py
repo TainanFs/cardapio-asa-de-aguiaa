@@ -4,67 +4,58 @@ from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 from datetime import datetime, time
 
-### ALTERAÇÃO 1: Importar bibliotecas de impressão ###
+### ALTERAÇÃO: Importar bibliotecas de impressão ###
 try:
     import win32print
     import win32api
     WINDOWS_PRINTING_ENABLED = True
 except ImportError:
     WINDOWS_PRINTING_ENABLED = False
-    # Esta variável nos ajuda a não quebrar o programa se ele rodar em um sistema não-Windows
-    # ou se a biblioteca não estiver instalada.
 
-# --- FUNÇÃO PARA A IMAGEM DE FUNDO ---
-page_bg_img = """
-<style>
-[data-testid="stAppViewContainer"] {
-background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true");
-background-size: cover;
-}
-[data-testid="stHeader"] {
-background-color: rgba(0, 0, 0, 0);
-}
-[data-testing="stToolbar"] {
-}
-</style>
-"""
-st.markdown(page_bg_img,unsafe_allow_html=True)
+# --- FUNÇÕES DE IMPRESSÃO ---
 
-
-# --- LÓGICA DE CONEXÃO ---
-try:
-    if hasattr(st, 'secrets') and "firestore_credentials" in st.secrets:
-        creds_dict = st.secrets["firestore_credentials"]
-        db = firestore.Client.from_service_account_info(creds_dict)
-    else:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        chave_path = os.path.join(script_dir, "firestore-chave.json")
-        db = firestore.Client.from_service_account_json(chave_path)
-except Exception as e:
-    st.error(f"🔴 Falha na conexão com o banco de dados: {e}")
-    st.stop()
-
-### ALTERAÇÃO 2: Adicionar funções de formatação e impressão ###
+### NOVO: Função para imprimir a comanda da cozinha ###
+def formatar_comanda_cozinha(identificador, garcom, itens_novos):
+    """Cria uma string formatada para a comanda da cozinha, com apenas os novos itens."""
+    try:
+        timestamp = datetime.now()
+        texto = f"--- COZINHA/BAR - {timestamp.strftime('%H:%M:%S')} ---\n"
+        texto += f"COMANDA: {identificador}\n"
+        texto += f"GARCOM: {garcom}\n"
+        texto += "--------------------------------------\n"
+        
+        for item in itens_novos:
+            nome = item.get('nome', 'Item sem nome')
+            qtd = item.get('quantidade', 1)
+            texto += f"** {qtd}x {nome} **\n"
+            if item.get('obs'):
+                texto += f"  > Obs: {item.get('obs')}\n"
+        
+        texto += "--------------------------------------\n\n\n"
+        return texto
+    except Exception as e:
+        st.warning(f"Não foi possível formatar a comanda da cozinha. Erro: {e}")
+        return None
 
 def formatar_cupom_para_impressao(pedido_dict):
-    """Cria uma string bem formatada para ser impressa como cupom."""
+    """Cria uma string formatada para o cupom de pagamento final."""
     try:
+        # ... (Esta função permanece a mesma da resposta anterior) ...
         identificador = pedido_dict.get('identificador', 'N/A')
         garcom = pedido_dict.get('garcom', 'N/A')
         timestamp = pedido_dict.get('timestamp')
         
-        texto = "--------- CUPOM ASA DE ÁGUIA ---------\n\n"
+        texto = "--------- CUPOM DE PAGAMENTO ---------\n\n"
         texto += f"Comanda: {identificador}\n"
         texto += f"Garcom: {garcom}\n"
         if timestamp and isinstance(timestamp, datetime):
-            texto += f"Horario: {timestamp.strftime('%d/%m/%Y %H:%M:%S')}\n"
+            texto += f"Horario Fechamento: {timestamp.strftime('%d/%m/%Y %H:%M:%S')}\n"
         texto += "--------------------------------------\n"
         
         for item in pedido_dict.get('itens', []):
             nome = item.get('nome', 'Item sem nome')
             qtd = item.get('quantidade', 1)
             preco_total_item = item.get('preco_unitario', 0) * qtd
-            # Formata a linha do item para alinhar o preço à direita
             linha_item = f"{qtd}x {nome}"
             preco_str = f"R${preco_total_item:.2f}"
             texto += f"{linha_item.ljust(30)} {preco_str.rjust(10)}\n"
@@ -76,62 +67,79 @@ def formatar_cupom_para_impressao(pedido_dict):
         texto += "       Obrigado pela preferencia!     \n\n\n"
         return texto
     except Exception as e:
-        st.warning(f"Não foi possível formatar o cupom. Erro: {e}")
+        st.warning(f"Não foi possível formatar o cupom de pagamento. Erro: {e}")
         return None
 
-def enviar_para_impressora(texto_para_imprimir):
+def enviar_para_impressora(texto_para_imprimir, nome_documento="Comanda"):
     """Envia um texto para a impressora padrão do Windows."""
     if not WINDOWS_PRINTING_ENABLED:
         st.warning("Impressão física não está disponível. (Biblioteca 'pywin32' não encontrada).")
         return False
         
     if not texto_para_imprimir:
-        st.error("Texto do cupom está vazio. Impressão cancelada.")
+        st.error("Texto para impressão está vazio. Impressão cancelada.")
         return False
 
     try:
         nome_impressora = win32print.GetDefaultPrinter()
         hPrinter = win32print.OpenPrinter(nome_impressora)
         try:
-            hJob = win32print.StartDocPrinter(hPrinter, 1, ("Cupom de Pagamento", None, "RAW"))
+            hJob = win32print.StartDocPrinter(hPrinter, 1, (nome_documento, None, "RAW"))
             try:
                 win32print.StartPagePrinter(hPrinter)
-                # Usar 'cp850' ou 'latin-1' pode ajudar com caracteres especiais em impressoras térmicas
                 win32print.WritePrinter(hPrinter, texto_para_imprimir.encode('cp850', errors='replace'))
                 win32print.EndPagePrinter(hPrinter)
             finally:
                 win32print.EndDocPrinter(hPrinter)
         finally:
             win32print.ClosePrinter(hPrinter)
-        st.info(f"✅ Cupom enviado para a impressora: {nome_impressora}")
+        st.info(f"✅ '{nome_documento}' enviado para a impressora: {nome_impressora}")
         return True
     except Exception as e:
         st.error(f"🔴 Falha ao enviar para a impressora física: {e}")
-        st.error("Verifique se há uma impressora padrão configurada no Windows.")
         return False
 
-
-# --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
-default_values = {
-    'logged_in': False, 'role': None, 'username': None, 'cart': [],
-    'table_number': 1, 'client_name': "",
-    'editing_product_id': None, 'editing_option_id': None, 'editing_user_id': None
+# --- IMAGEM DE FUNDO E CONEXÃO COM BANCO (sem alterações) ---
+page_bg_img = """
+<style>
+[data-testid="stAppViewContainer"] {
+background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true");
+background-size: cover;
 }
-for key, value in default_values.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
+[data-testid="stHeader"] {
+background-color: rgba(0, 0, 0, 0);
+}
+</style>
+"""
+st.markdown(page_bg_img,unsafe_allow_html=True)
 
-# --- FUNÇÕES DE LÓGICA E TELAS (sem alterações) ---
+try:
+    if hasattr(st, 'secrets') and "firestore_credentials" in st.secrets:
+        db = firestore.Client.from_service_account_info(st.secrets["firestore_credentials"])
+    else:
+        chave_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "firestore-chave.json")
+        db = firestore.Client.from_service_account_json(chave_path)
+except Exception as e:
+    st.error(f"🔴 Falha na conexão com o banco de dados: {e}")
+    st.stop()
+
+# --- ESTADO DA SESSÃO (sem alterações) ---
+default_values = {'logged_in': False, 'role': None, 'username': None, 'cart': [], 'table_number': 1, 'client_name': "", 'editing_product_id': None, 'editing_option_id': None, 'editing_user_id': None}
+for key, value in default_values.items():
+    if key not in st.session_state: st.session_state[key] = value
+
+# --- FUNÇÃO DE LOGIN (sem alterações) ---
 def check_login(username, password):
-    users_ref = db.collection("usuarios")
-    query = users_ref.where(filter=FieldFilter("nome_usuario", "==", username)).limit(1).stream()
+    query = db.collection("usuarios").where(filter=FieldFilter("nome_usuario", "==", username)).limit(1).stream()
     user_list = [user.to_dict() for user in query]
-    if user_list and user_list[0].get("senha") == password:
-        return True, user_list[0].get("cargo")
+    if user_list and user_list[0].get("senha") == password: return True, user_list[0].get("cargo")
     return False, None
 
+
+### ALTERAÇÃO PRINCIPAL: LÓGICA DE IMPRESSÃO MOVIDA PARA CÁ ###
 def render_order_placement_screen(db, products, options):
     st.title(f"👨‍🍳 Lançar Pedido - {st.session_state.get('username')}")
+    # ... (toda a lógica de seleção de itens permanece a mesma) ...
     tipo_comanda = st.radio("Tipo de Comanda:", ["Mesa", "Cliente"], horizontal=True, key="tipo_comanda_launcher")
     identificador_comanda = ""
     if tipo_comanda == "Mesa":
@@ -144,6 +152,7 @@ def render_order_placement_screen(db, products, options):
     st.write("---")
     tab_sanduiches, tab_cremes, tab_bebidas = st.tabs(["🍔 Sanduíches", "🍨 Cremes", "🥤 Bebidas"])
 
+    # ... (código das abas de produtos omitido para brevidade, ele não muda) ...
     with tab_sanduiches:
         st.subheader("Montar Sanduíche")
         sanduiches_base = [p for p in products if p.get('categoria') == 'Sanduíches']
@@ -229,6 +238,7 @@ def render_order_placement_screen(db, products, options):
     st.header(f"Itens a Adicionar na Comanda de: {identificador_comanda}")
     if st.session_state.cart:
         total_a_adicionar = sum(item.get('preco_unitario', 0) * item.get('quantidade', 1) for item in st.session_state.cart)
+        # ... (lógica de exibição do carrinho permanece a mesma) ...
         for i, item in enumerate(st.session_state.cart):
             col1, col2 = st.columns([4, 1])
             with col1:
@@ -240,13 +250,17 @@ def render_order_placement_screen(db, products, options):
                     st.session_state.cart.pop(i)
                     st.rerun()
         st.subheader(f"Total a ser adicionado: R$ {total_a_adicionar:.2f}")
-        
+
         if st.button("✅ Adicionar à Comanda / Abrir Nova", type="primary", key="send_order_launcher"):
             if not identificador_comanda.strip():
                 st.warning("Por favor, preencha o número da Mesa ou o nome do Cliente.")
             else:
+                # Salva os itens do carrinho em uma variável temporária antes de limpar
+                itens_para_imprimir = list(st.session_state.cart)
+
                 query = db.collection("pedidos").where(filter=FieldFilter("identificador", "==", identificador_comanda)).where(filter=FieldFilter("status", "==", "novo")).limit(1)
                 comandas_abertas = list(query.stream())
+                
                 if comandas_abertas:
                     comanda_existente_doc = comandas_abertas[0]
                     dados_comanda_antiga = comanda_existente_doc.to_dict()
@@ -259,14 +273,24 @@ def render_order_placement_screen(db, products, options):
                     db.collection("pedidos").add(pedido_final)
                     st.success(f"Nova comanda aberta para {identificador_comanda}!")
                 
+                ### INÍCIO DA LÓGICA DE IMPRESSÃO AUTOMÁTICA ###
+                comanda_cozinha_texto = formatar_comanda_cozinha(
+                    identificador=identificador_comanda, 
+                    garcom=st.session_state.username, 
+                    itens_novos=itens_para_imprimir
+                )
+                enviar_para_impressora(comanda_cozinha_texto, nome_documento="Comanda para Cozinha")
+                ### FIM DA LÓGICA DE IMPRESSÃO AUTOMÁTICA ###
+
                 st.session_state.cart = []
                 st.balloons()
                 st.rerun()
     else:
         st.info("O carrinho está vazio. Adicione itens para enviar à comanda.")
 
-# --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
+# --- LÓGICA PRINCIPAL DA APLICAÇÃO (sem alterações) ---
 if not st.session_state.get('logged_in', False):
+    # ... (código de login sem alterações) ...
     st.title("🔥 Cardápio Asa de Águia - Login")
     with st.form("login_form"):
         username = st.text_input("Nome de Usuário")
@@ -294,9 +318,10 @@ else:
     except Exception as e:
         st.error(f"Erro ao carregar dados do cardápio: {e}")
         st.stop()
-
+    
+    # PAINEL DO ADMIN (sem alterações)
     if st.session_state.get('role') == 'admin':
-        # ... O código do admin continua o mesmo, sem alterações ...
+        # ... (código do admin omitido, sem alterações) ...
         st.title("⚙️ Painel do Administrador")
         try:
             all_users_docs = db.collection("usuarios").stream()
@@ -475,21 +500,19 @@ else:
                         else:
                             db.collection("usuarios").document(u_id).delete()
                             st.rerun()
-    
+
+    # PAINEL DO GARÇOM (chama a função de renderização que agora imprime)
     elif st.session_state.get('role') == 'garcom':
         products_disponiveis = [p for p in all_products if p.get("disponivel", True)]
         render_order_placement_screen(db, products_disponiveis, all_opcoes)
 
+    # PAINEL DO CAIXA (imprime o cupom de pagamento final)
     elif st.session_state.get('role') == 'caixa':
         st.title("💰 Painel do Caixa")
         tab_ver_contas, tab_lancar_pedido = st.tabs(["Ver Contas Abertas", "Lançar Novo Pedido"])
         with tab_ver_contas:
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.header("Contas Pendentes de Pagamento")
-            with col2:
-                if st.button("Atualizar Comandas 🔄"):
-                    st.rerun() 
+            st.header("Contas Pendentes de Pagamento")
+            if st.button("Atualizar Comandas 🔄"): st.rerun()
             pedidos_ref = db.collection("pedidos").where(filter=FieldFilter("status", "==", "novo")).order_by("timestamp", direction=firestore.Query.ASCENDING).stream()
             pedidos_a_pagar = [doc.to_dict() | {'id': doc.id} for doc in pedidos_ref]
             if not pedidos_a_pagar:
@@ -498,34 +521,27 @@ else:
                 for pedido in pedidos_a_pagar:
                     identificador_label = f"**{pedido.get('identificador')}**"
                     with st.expander(f"{identificador_label} - Total: R$ {pedido.get('total', 0):.2f}"):
+                        # ... (código de exibição dos itens sem alterações) ...
                         st.subheader("Itens Consumidos:")
                         for item in pedido.get('itens', []):
                             st.write(f" - {item.get('quantidade')}x **{item['nome']}**")
                             if item.get('obs'):
                                 st.info(f"   > Obs: {item['obs']}")
                         st.write("---")
-                        
-                        ### ALTERAÇÃO 3: Lógica de impressão adicionada ao botão ###
-                        if st.button("Confirmar Pagamento e Enviar para Cozinha", key=f"pay_{pedido['id']}", type="primary"):
-                            # 1. Atualiza o status no banco de dados primeiro
+                        if st.button("Confirmar Pagamento e Imprimir Cupom", key=f"pay_{pedido['id']}", type="primary"):
                             db.collection("pedidos").document(pedido['id']).update({"status": "pago"})
-                            
-                            # 2. Formata o dicionário do pedido em um texto para impressão
                             cupom_texto = formatar_cupom_para_impressao(pedido)
-                            
-                            # 3. Envia o texto formatado para a impressora física
-                            enviar_para_impressora(cupom_texto)
-                            
-                            st.success(f"Pedido de {identificador_label} pago e enviado para a cozinha!")
+                            enviar_para_impressora(cupom_texto, nome_documento="Cupom de Pagamento")
+                            st.success(f"Pedido de {identificador_label} pago!")
                             st.balloons()
                             st.rerun()
-                            
         with tab_lancar_pedido:
             products_disponiveis = [p for p in all_products if p.get("disponivel", True)]
             render_order_placement_screen(db, products_disponiveis, all_opcoes)
-
+    
+    # PAINEL DA COZINHA (sem alterações)
     elif st.session_state.get('role') == 'cozinha':
-        # ... O código da cozinha continua o mesmo, sem alterações ...
+        # ... (código da cozinha omitido, sem alterações) ...
         st.title("📈 Relatório de Pedidos do Dia")
         try:
             today = datetime.now().date()
