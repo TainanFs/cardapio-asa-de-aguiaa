@@ -166,51 +166,55 @@ def render_order_placement_screen(db, products, options):
         st.subheader(f"Total a ser adicionado: R$ {total_a_adicionar:.2f}")
         
         if st.button("✅ Adicionar à Comanda / Abrir Nova", type="primary", key="send_order_launcher"):
-    if not identificador_comanda.strip():
-        st.warning("Por favor, preencha o número da Mesa ou o nome do Cliente.")
-    else:
-        # Tente executar as operações do banco de dados
-        try:
-            query = db.collection("pedidos").where(filter=FieldFilter("identificador", "==", identificador_comanda)).where(filter=FieldFilter("status", "==", "novo")).limit(1)
-            comandas_abertas = list(query.stream())
-            
-            if comandas_abertas:
-                # --- Cenário 1: Atualizar comanda existente ---
-                comanda_existente_doc = comandas_abertas[0]
-                id_do_pedido = comanda_existente_doc.id # Pegamos o ID aqui
-
-                dados_comanda_antiga = comanda_existente_doc.to_dict()
-                novos_itens = dados_comanda_antiga.get('itens', []) + st.session_state.cart
-                novo_total = dados_comanda_antiga.get('total', 0) + total_a_adicionar
-                
-                comanda_existente_doc.reference.update({"itens": novos_itens, "total": novo_total})
-                st.success(f"Itens adicionados à comanda da(o) {identificador_comanda}!")
-
-                # Adiciona o botão de impressão para a comanda atualizada
-                url_impressao = f"http://127.0.0.1:5000/imprimir/pedido/{id_do_pedido}"
-                st.link_button("🖨️ Imprimir Cupom Atualizado", url_impressao, type="secondary")
-
+            # O código abaixo pertence ao 'if st.button' e deve ter recuo
+            if not identificador_comanda.strip():
+                # Este código pertence ao 'if not identificador_comanda' e deve ter mais recuo
+                st.warning("Por favor, preencha o número da Mesa ou o nome do Cliente.")
             else:
-                # --- Cenário 2: Criar nova comanda ---
-                pedido_final = {"identificador": identificador_comanda, "tipo_identificador": tipo_comanda, "garcom": st.session_state.username, "itens": st.session_state.cart, "total": total_a_adicionar, "status": "novo", "timestamp": firestore.SERVER_TIMESTAMP}
-                
-                # CORREÇÃO: Capturamos o resultado para pegar o ID do novo pedido
-                timestamp, pedido_ref = db.collection("pedidos").add(pedido_final)
-                id_do_novo_pedido = pedido_ref.id # Pegamos o ID aqui!
-                
-                st.success(f"Nova comanda aberta para {identificador_comanda}!")
+                # Este 'else' pertence ao 'if not identificador_comanda'
+                try:
+                    # Este código pertence ao 'try' e precisa de mais recuo
+                    query = db.collection("pedidos").where(filter=FieldFilter("identificador", "==", identificador_comanda)).where(filter=FieldFilter("status", "==", "novo")).limit(1)
+                    comandas_abertas = list(query.stream())
+                    
+                    if comandas_abertas:
+                        # Cenário 1: Atualizar comanda existente
+                        comanda_existente_doc = comandas_abertas[0]
+                        id_do_pedido = comanda_existente_doc.id
 
-                # Adiciona o botão de impressão para a nova comanda
-                url_impressao = f"http://127.0.0.1:5000/imprimir/pedido/{id_do_novo_pedido}"
-                st.link_button("🖨️ Imprimir Cupom da Nova Comanda", url_impressao, type="secondary")
+                        dados_comanda_antiga = comanda_existente_doc.to_dict()
+                        novos_itens = dados_comanda_antiga.get('itens', []) + st.session_state.cart
+                        novo_total = dados_comanda_antiga.get('total', 0) + total_a_adicionar
+                        
+                        comanda_existente_doc.reference.update({"itens": novos_itens, "total": novo_total})
+                        st.success(f"Itens adicionados à comanda da(o) {identificador_comanda}!")
 
-            # Limpa o carrinho e comemora
-            st.session_state.cart = []
-            st.balloons()
-            
-            # LEMBRE-SE: Comente a linha abaixo para o botão ficar visível
-            # st.rerun()
+                        # Adiciona o botão de impressão para a comanda atualizada
+                        url_impressao = f"http://127.0.0.1:5000/imprimir/pedido/{id_do_pedido}"
+                        st.link_button("🖨️ Imprimir Cupom Atualizado", url_impressao, type="secondary")
 
+                    else:
+                        # Cenário 2: Criar nova comanda
+                        pedido_final = {"identificador": identificador_comanda, "tipo_identificador": tipo_comanda, "garcom": st.session_state.username, "itens": st.session_state.cart, "total": total_a_adicionar, "status": "novo", "timestamp": firestore.SERVER_TIMESTAMP}
+                        
+                        timestamp, pedido_ref = db.collection("pedidos").add(pedido_final)
+                        id_do_novo_pedido = pedido_ref.id
+                        
+                        st.success(f"Nova comanda aberta para {identificador_comanda}!")
+
+                        # Adiciona o botão de impressão para a nova comanda
+                        url_impressao = f"http://127.0.0.1:5000/imprimir/pedido/{id_do_novo_pedido}"
+                        st.link_button("🖨️ Imprimir Cupom da Nova Comanda", url_impressao, type="secondary")
+
+                    # Limpa o carrinho e comemora
+                    st.session_state.cart = []
+                    st.balloons()
+                    
+                    # Lembre-se de comentar esta linha para o botão não sumir
+                    # st.rerun()
+
+                except Exception as e:
+                    st.error(f"Ocorreu um erro ao processar a comanda: {e}")
         except Exception as e:
             st.error(f"Ocorreu um erro ao processar a comanda: {e}")
     else:
