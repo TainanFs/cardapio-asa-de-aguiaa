@@ -428,11 +428,18 @@ else:
                             if item.get('obs'):
                                 st.info(f"   > Obs: {item['obs']}")
                         st.write("---")
-                        if st.button("Confirmar Pagamento e Enviar para Cozinha", key=f"pay_{pedido['id']}", type="primary"):
-                            db.collection("pedidos").document(pedido['id']).update({"status": "pago"})
-                            st.success(f"Pedido de {identificador_label} pago e enviado para a cozinha!")
-                            st.balloons()
-                            st.rerun()
+                         # Botões de ação dentro da comanda
+                            botoes_col1, botoes_col2 = st.columns(2)
+                            with botoes_col1:
+                                if st.button("Confirmar Pagamento", key=f"pay_{p_id}", type="primary"):
+                                    db.collection("pedidos").document(p_id).update({"status": "pago"})
+                                    st.success(f"Pedido de {identificador_label} pago e enviado para a cozinha!")
+                                    st.balloons()
+                                    st.rerun()
+                            with botoes_col2:
+                                if st.button("✏️ Editar Comanda", key=f"edit_{p_id}"):
+                                    st.session_state.editing_order_id = p_id
+                                    st.rerun()
         with tab_lancar_pedido:
             products_disponiveis = [p for p in all_products if p.get("disponivel", True)]
             render_order_placement_screen(db, products_disponiveis, all_opcoes)
