@@ -4,8 +4,17 @@ from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 from datetime import datetime, time
 
+### ALTERAÇÃO 1: Importar bibliotecas de impressão ###
+try:
+    import win32print
+    import win32api
+    WINDOWS_PRINTING_ENABLED = True
+except ImportError:
+    WINDOWS_PRINTING_ENABLED = False
+    # Esta variável nos ajuda a não quebrar o programa se ele rodar em um sistema não-Windows
+    # ou se a biblioteca não estiver instalada.
+
 # --- FUNÇÃO PARA A IMAGEM DE FUNDO ---
-import streamlit as st 
 page_bg_img = """
 <style>
 [data-testid="stAppViewContainer"] {
@@ -35,6 +44,73 @@ except Exception as e:
     st.error(f"🔴 Falha na conexão com o banco de dados: {e}")
     st.stop()
 
+### ALTERAÇÃO 2: Adicionar funções de formatação e impressão ###
+
+def formatar_cupom_para_impressao(pedido_dict):
+    """Cria uma string bem formatada para ser impressa como cupom."""
+    try:
+        identificador = pedido_dict.get('identificador', 'N/A')
+        garcom = pedido_dict.get('garcom', 'N/A')
+        timestamp = pedido_dict.get('timestamp')
+        
+        texto = "--------- CUPOM ASA DE ÁGUIA ---------\n\n"
+        texto += f"Comanda: {identificador}\n"
+        texto += f"Garcom: {garcom}\n"
+        if timestamp and isinstance(timestamp, datetime):
+            texto += f"Horario: {timestamp.strftime('%d/%m/%Y %H:%M:%S')}\n"
+        texto += "--------------------------------------\n"
+        
+        for item in pedido_dict.get('itens', []):
+            nome = item.get('nome', 'Item sem nome')
+            qtd = item.get('quantidade', 1)
+            preco_total_item = item.get('preco_unitario', 0) * qtd
+            # Formata a linha do item para alinhar o preço à direita
+            linha_item = f"{qtd}x {nome}"
+            preco_str = f"R${preco_total_item:.2f}"
+            texto += f"{linha_item.ljust(30)} {preco_str.rjust(10)}\n"
+            if item.get('obs'):
+                texto += f"  > Obs: {item.get('obs')}\n"
+                
+        texto += "--------------------------------------\n"
+        texto += f"TOTAL:".ljust(30) + f"R$ {pedido_dict.get('total', 0):.2f}".rjust(10) + "\n\n"
+        texto += "       Obrigado pela preferencia!     \n\n\n"
+        return texto
+    except Exception as e:
+        st.warning(f"Não foi possível formatar o cupom. Erro: {e}")
+        return None
+
+def enviar_para_impressora(texto_para_imprimir):
+    """Envia um texto para a impressora padrão do Windows."""
+    if not WINDOWS_PRINTING_ENABLED:
+        st.warning("Impressão física não está disponível. (Biblioteca 'pywin32' não encontrada).")
+        return False
+        
+    if not texto_para_imprimir:
+        st.error("Texto do cupom está vazio. Impressão cancelada.")
+        return False
+
+    try:
+        nome_impressora = win32print.GetDefaultPrinter()
+        hPrinter = win32print.OpenPrinter(nome_impressora)
+        try:
+            hJob = win32print.StartDocPrinter(hPrinter, 1, ("Cupom de Pagamento", None, "RAW"))
+            try:
+                win32print.StartPagePrinter(hPrinter)
+                # Usar 'cp850' ou 'latin-1' pode ajudar com caracteres especiais em impressoras térmicas
+                win32print.WritePrinter(hPrinter, texto_para_imprimir.encode('cp850', errors='replace'))
+                win32print.EndPagePrinter(hPrinter)
+            finally:
+                win32print.EndDocPrinter(hPrinter)
+        finally:
+            win32print.ClosePrinter(hPrinter)
+        st.info(f"✅ Cupom enviado para a impressora: {nome_impressora}")
+        return True
+    except Exception as e:
+        st.error(f"🔴 Falha ao enviar para a impressora física: {e}")
+        st.error("Verifique se há uma impressora padrão configurada no Windows.")
+        return False
+
+
 # --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
 default_values = {
     'logged_in': False, 'role': None, 'username': None, 'cart': [],
@@ -45,7 +121,7 @@ for key, value in default_values.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
-# --- FUNÇÕES DE LÓGICA E TELAS ---
+# --- FUNÇÕES DE LÓGICA E TELAS (sem alterações) ---
 def check_login(username, password):
     users_ref = db.collection("usuarios")
     query = users_ref.where(filter=FieldFilter("nome_usuario", "==", username)).limit(1).stream()
@@ -53,8 +129,6 @@ def check_login(username, password):
     if user_list and user_list[0].get("senha") == password:
         return True, user_list[0].get("cargo")
     return False, None
-
-# COLE ESTA FUNÇÃO INTEIRA NO LUGAR DA SUA ANTIGA render_order_placement_screen
 
 def render_order_placement_screen(db, products, options):
     st.title(f"👨‍🍳 Lançar Pedido - {st.session_state.get('username')}")
@@ -70,7 +144,6 @@ def render_order_placement_screen(db, products, options):
     st.write("---")
     tab_sanduiches, tab_cremes, tab_bebidas = st.tabs(["🍔 Sanduíches", "🍨 Cremes", "🥤 Bebidas"])
 
-    # Lógica das abas para adicionar itens (seu código original, sem alterações)
     with tab_sanduiches:
         st.subheader("Montar Sanduíche")
         sanduiches_base = [p for p in products if p.get('categoria') == 'Sanduíches']
@@ -108,7 +181,6 @@ def render_order_placement_screen(db, products, options):
                     st.session_state.cart.append({"nome": nome_final_sb, "preco_unitario": preco_final_sb, "quantidade": quantidade_sb, "obs": obs_sb})
                     st.success(f"Adicionado: {quantidade_sb}x {nome_final_sb}!")
                     st.rerun()
-
     with tab_cremes:
         st.subheader("Montar Creme")
         cremes_base = [p for p in products if p.get('categoria') == 'Cremes']
@@ -168,62 +240,28 @@ def render_order_placement_screen(db, products, options):
                     st.session_state.cart.pop(i)
                     st.rerun()
         st.subheader(f"Total a ser adicionado: R$ {total_a_adicionar:.2f}")
-
-        # --- AQUI COMEÇA O BLOCO QUE SUBSTITUÍMOS ---
+        
         if st.button("✅ Adicionar à Comanda / Abrir Nova", type="primary", key="send_order_launcher"):
             if not identificador_comanda.strip():
                 st.warning("Por favor, preencha o número da Mesa ou o nome do Cliente.")
             else:
-                try:
-                    query = db.collection("pedidos").where(filter=FieldFilter("identificador", "==", identificador_comanda)).where(filter=FieldFilter("status", "==", "novo")).limit(1)
-                    comandas_abertas = list(query.stream())
-                    
-                    if comandas_abertas:
-                        # Cenário 1: Atualizar comanda existente
-                        comanda_existente_doc = comandas_abertas[0]
-                        id_do_pedido = comanda_existente_doc.id
-
-                        dados_comanda_antiga = comanda_existente_doc.to_dict()
-                        novos_itens = dados_comanda_antiga.get('itens', []) + st.session_state.cart
-                        novo_total = dados_comanda_antiga.get('total', 0) + total_a_adicionar
-                        
-                        comanda_existente_doc.reference.update({"itens": novos_itens, "total": novo_total})
-                        st.success(f"Itens adicionados à comanda da(o) {identificador_comanda}!")
-
-                        # Botão de impressão para comanda atualizada
-                        url_impressao = f"http://127.0.0.1:5000/imprimir/pedido/{id_do_pedido}"
-                        st.link_button("🖨️ Imprimir Cupom Atualizado", url_impressao, type="secondary")
-
-                    else:
-                        # Cenário 2: Criar nova comanda
-                        pedido_final = {
-                            "identificador": identificador_comanda, 
-                            "tipo_identificador": tipo_comanda, 
-                            "garcom": st.session_state.username, 
-                            "itens": st.session_state.cart, 
-                            "total": total_a_adicionar, 
-                            "status": "novo", 
-                            "timestamp": firestore.SERVER_TIMESTAMP
-                        }
-                        
-                        timestamp, pedido_ref = db.collection("pedidos").add(pedido_final)
-                        id_do_novo_pedido = pedido_ref.id
-                        
-                        st.success(f"Nova comanda aberta para {identificador_comanda}!")
-
-                        # Botão de impressão para nova comanda
-                        url_impressao = f"http://127.0.0.1:5000/imprimir/pedido/{id_do_novo_pedido}"
-                        st.link_button("🖨️ Imprimir Cupom da Nova Comanda", url_impressao, type="secondary")
-
-                    # Limpa o carrinho e comemora
-                    st.session_state.cart = []
-                    st.balloons()
-                    
-                    # Comentamos esta linha para o botão não sumir
-                    # st.rerun()
-
-                except Exception as e:
-                    st.error(f"Ocorreu um erro ao processar a comanda: {e}")
+                query = db.collection("pedidos").where(filter=FieldFilter("identificador", "==", identificador_comanda)).where(filter=FieldFilter("status", "==", "novo")).limit(1)
+                comandas_abertas = list(query.stream())
+                if comandas_abertas:
+                    comanda_existente_doc = comandas_abertas[0]
+                    dados_comanda_antiga = comanda_existente_doc.to_dict()
+                    novos_itens = dados_comanda_antiga.get('itens', []) + st.session_state.cart
+                    novo_total = dados_comanda_antiga.get('total', 0) + total_a_adicionar
+                    comanda_existente_doc.reference.update({"itens": novos_itens, "total": novo_total, "timestamp": firestore.SERVER_TIMESTAMP})
+                    st.success(f"Itens adicionados à comanda da(o) {identificador_comanda}!")
+                else:
+                    pedido_final = {"identificador": identificador_comanda, "tipo_identificador": tipo_comanda, "garcom": st.session_state.username, "itens": st.session_state.cart, "total": total_a_adicionar, "status": "novo", "timestamp": firestore.SERVER_TIMESTAMP}
+                    db.collection("pedidos").add(pedido_final)
+                    st.success(f"Nova comanda aberta para {identificador_comanda}!")
+                
+                st.session_state.cart = []
+                st.balloons()
+                st.rerun()
     else:
         st.info("O carrinho está vazio. Adicione itens para enviar à comanda.")
 
@@ -258,6 +296,7 @@ else:
         st.stop()
 
     if st.session_state.get('role') == 'admin':
+        # ... O código do admin continua o mesmo, sem alterações ...
         st.title("⚙️ Painel do Administrador")
         try:
             all_users_docs = db.collection("usuarios").stream()
@@ -436,7 +475,7 @@ else:
                         else:
                             db.collection("usuarios").document(u_id).delete()
                             st.rerun()
-
+    
     elif st.session_state.get('role') == 'garcom':
         products_disponiveis = [p for p in all_products if p.get("disponivel", True)]
         render_order_placement_screen(db, products_disponiveis, all_opcoes)
@@ -449,9 +488,8 @@ else:
             with col1:
                 st.header("Contas Pendentes de Pagamento")
             with col2:
-                # O botão de atualização manual
                 if st.button("Atualizar Comandas 🔄"):
-                    st.rerun() # Força a recarga da página
+                    st.rerun() 
             pedidos_ref = db.collection("pedidos").where(filter=FieldFilter("status", "==", "novo")).order_by("timestamp", direction=firestore.Query.ASCENDING).stream()
             pedidos_a_pagar = [doc.to_dict() | {'id': doc.id} for doc in pedidos_ref]
             if not pedidos_a_pagar:
@@ -466,16 +504,28 @@ else:
                             if item.get('obs'):
                                 st.info(f"   > Obs: {item['obs']}")
                         st.write("---")
+                        
+                        ### ALTERAÇÃO 3: Lógica de impressão adicionada ao botão ###
                         if st.button("Confirmar Pagamento e Enviar para Cozinha", key=f"pay_{pedido['id']}", type="primary"):
+                            # 1. Atualiza o status no banco de dados primeiro
                             db.collection("pedidos").document(pedido['id']).update({"status": "pago"})
+                            
+                            # 2. Formata o dicionário do pedido em um texto para impressão
+                            cupom_texto = formatar_cupom_para_impressao(pedido)
+                            
+                            # 3. Envia o texto formatado para a impressora física
+                            enviar_para_impressora(cupom_texto)
+                            
                             st.success(f"Pedido de {identificador_label} pago e enviado para a cozinha!")
                             st.balloons()
                             st.rerun()
+                            
         with tab_lancar_pedido:
             products_disponiveis = [p for p in all_products if p.get("disponivel", True)]
             render_order_placement_screen(db, products_disponiveis, all_opcoes)
 
     elif st.session_state.get('role') == 'cozinha':
+        # ... O código da cozinha continua o mesmo, sem alterações ...
         st.title("📈 Relatório de Pedidos do Dia")
         try:
             today = datetime.now().date()
