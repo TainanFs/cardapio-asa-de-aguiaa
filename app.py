@@ -355,7 +355,17 @@ else:
     
     # PAINEL DO ADMIN (sem alterações)
     if st.session_state.get('role') == 'admin':
-        # ... (código do admin omitido, sem alterações) ...
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
         st.title("⚙️ Painel do Administrador")
         try:
             all_users_docs = db.collection("usuarios").stream()
