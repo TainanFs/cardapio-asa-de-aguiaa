@@ -2,7 +2,7 @@ import streamlit as st
 import os
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 ### ALTERAÇÃO: Importar bibliotecas de impressão ###
 try:
