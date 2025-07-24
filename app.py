@@ -528,7 +528,7 @@ else:
 
     # PAINEL DO CAIXA (imprime o cupom de pagamento final)
     elif st.session_state.get('role') == 'caixa':
-        st.title("💰 Caixa")
+        st.title("💰 Caixa \n")
         tab_ver_contas, tab_lancar_pedido = st.tabs(["Ver Contas Abertas", "Lançar Novo Pedido"])
         with tab_ver_contas:
             st.header("Contas Pendentes de Pagamento")
