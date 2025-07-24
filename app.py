@@ -313,8 +313,8 @@ def render_order_placement_screen(db, products, options):
 if not st.session_state.get('logged_in', False):
     # ... (código de login sem alterações) ...
    st.title("🔥 Cardápio Asa de Águia - Login")
-    st.write("\n")
-    st.write("\n")
+   st.write("\n")
+   st.write("\n")
    with st.form("login_form"):
         username = st.text_input("Nome de Usuário")
         password = st.text_input("Senha", type="password")
