@@ -102,11 +102,30 @@ def enviar_para_impressora(texto_para_imprimir, nome_documento="Comanda"):
 # --- IMAGEM DE FUNDO E CONEXÃO COM BANCO (sem alterações) ---
 page_bg_img = """
 <style>
-[data-testid="stAppViewContainer"] > .main {
-    /* Apenas uma cor de fundo escura, sem imagem */
-    background-color: #1a1a1a; 
+/* --- ESTILO PADRÃO (Para telas largas como PC e tablet deitado) --- */
+[data-testid="stAppViewContainer"] {
+    background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true");
+    background-size: cover; /* Cobre a tela inteira, perfeito para o formato paisagem */
+    background-position: center center;
+    background-repeat: no-repeat;
 }
 
+/* --- CÓDIGO INTELIGENTE (Ativado apenas em telas com largura máxima de 768px) --- */
+@media (max-width: 768px) {
+    [data-testid="stAppViewContainer"] {
+        /* Aqui definimos o estilo SÓ para celulares em pé */
+        background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true") !important;
+        
+        /* Deixa o logo um pouco maior que a tela para dar destaque */
+        background-size: 120% auto !important; 
+        
+        /* Alinha no centro horizontal e 40px abaixo do topo */
+        background-position: center 40px !important; 
+    }
+}
+
+
+/* --- Estilos que valem para ambas as telas --- */
 [data-testid="stHeader"] {
     background-color: rgba(0, 0, 0, 0);
 }
