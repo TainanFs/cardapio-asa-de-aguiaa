@@ -105,17 +105,11 @@ page_bg_img = """
 [data-testid="stAppViewContainer"] {
     background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true") !important;
     
-    /* --- ÁREA DE AJUSTE --- */
-    
-    /* TAMANHO: A imagem ocupará 130% da largura da tela, o que a fará parecer maior.
-       Você pode testar valores como 120%, 140%, etc. */
+    /* MANTENHA O TAMANHO QUE JÁ ESTAVA BOM */
     background-size: 130% auto !important; 
     
-    /* POSIÇÃO: Alinhada no centro horizontal e 80 pixels abaixo do topo.
-       Você pode testar valores como 50px, 100px, ou até mesmo 15%. */
-    background-position: center 80px !important; 
-    
-    /* --- FIM DA ÁREA DE AJUSTE --- */
+    /* NOVA POSIÇÃO: Apenas 25 pixels do topo, para subir a imagem */
+    background-position: center 25px !important; 
     
     background-repeat: no-repeat !important;
 }
