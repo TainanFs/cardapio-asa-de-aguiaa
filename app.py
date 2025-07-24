@@ -583,9 +583,21 @@ else:
             products_disponiveis = [p for p in all_products if p.get("disponivel", True)]
             render_order_placement_screen(db, products_disponiveis, all_opcoes)
     
-    # PAINEL DA COZINHA (sem alterações)
+    # PAINEL DA COZINHA 
     elif st.session_state.get('role') == 'cozinha':
-        st.title("🔎 Histórico de Vendas da Cozinha")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+        st.write("\n")
+    
+        st.title("🔎 Histórico de Vendas")
 
         # --- 1. SELETOR DE DATA ---
         opcoes_data = ("Hoje", "Ontem", "Anteontem")
