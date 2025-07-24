@@ -595,8 +595,6 @@ else:
         st.write("\n")
         st.write("\n")
         st.write("\n")
-        st.write("\n")
-    
         st.title("🔎 Histórico de Vendas")
 
         # --- 1. SELETOR DE DATA ---
