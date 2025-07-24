@@ -102,24 +102,16 @@ def enviar_para_impressora(texto_para_imprimir, nome_documento="Comanda"):
 # --- IMAGEM DE FUNDO E CONEXÃO COM BANCO (sem alterações) ---
 page_bg_img = """
 <style>
-/* --- Estilo Padrão para Telas Largas (Desktop) --- */
 [data-testid="stAppViewContainer"] {
-    background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true");
-    background-size: cover;
-    background-position: center center;
-}
-
-/* --- Estilo Específico para Telas Estreitas (Celulares em pé) --- */
-@media (max-width: 768px) {
-    [data-testid="stAppViewContainer"] {
-        /* COLOQUE AQUI A URL DA SUA NOVA IMAGEM VERTICAL */
-        background-image: url("URL_DA_SUA_IMAGEM_VERTICAL.jpg");
-        background-size: cover; /* Ou contain, dependendo da sua nova imagem */
-    }
+    /* Usamos !important para garantir que nossa regra tenha prioridade máxima */
+    background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true") !important;
+    background-size: 100% auto !important;
+    background-position: center top !important;
+    background-repeat: no-repeat !important;
 }
 
 [data-testid="stHeader"] {
-    background-color: rgba(0, 0, 0, 0);
+    background-color: rgba(0, 0, 0, 0) !important;
 }
 </style>
 """
