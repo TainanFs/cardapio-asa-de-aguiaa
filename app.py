@@ -103,10 +103,20 @@ def enviar_para_impressora(texto_para_imprimir, nome_documento="Comanda"):
 page_bg_img = """
 <style>
 [data-testid="stAppViewContainer"] {
-    /* Usamos !important para garantir que nossa regra tenha prioridade máxima */
     background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true") !important;
-    background-size: 100% auto !important;
-    background-position: center top !important;
+    
+    /* --- ÁREA DE AJUSTE --- */
+    
+    /* TAMANHO: A imagem ocupará 130% da largura da tela, o que a fará parecer maior.
+       Você pode testar valores como 120%, 140%, etc. */
+    background-size: 130% auto !important; 
+    
+    /* POSIÇÃO: Alinhada no centro horizontal e 80 pixels abaixo do topo.
+       Você pode testar valores como 50px, 100px, ou até mesmo 15%. */
+    background-position: center 80px !important; 
+    
+    /* --- FIM DA ÁREA DE AJUSTE --- */
+    
     background-repeat: no-repeat !important;
 }
 
