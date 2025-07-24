@@ -102,20 +102,13 @@ def enviar_para_impressora(texto_para_imprimir, nome_documento="Comanda"):
 # --- IMAGEM DE FUNDO E CONEXÃO COM BANCO (sem alterações) ---
 page_bg_img = """
 <style>
-[data-testid="stAppViewContainer"] {
-    background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true") !important;
-    
-    /* MANTENHA O TAMANHO QUE JÁ ESTAVA BOM */
-    background-size: 130% auto !important; 
-    
-    /* NOVA POSIÇÃO: Apenas 25 pixels do topo, para subir a imagem */
-    background-position: center 25px !important; 
-    
-    background-repeat: no-repeat !important;
+[data-testid="stAppViewContainer"] > .main {
+    /* Apenas uma cor de fundo escura, sem imagem */
+    background-color: #1a1a1a; 
 }
 
 [data-testid="stHeader"] {
-    background-color: rgba(0, 0, 0, 0) !important;
+    background-color: rgba(0, 0, 0, 0);
 }
 </style>
 """
