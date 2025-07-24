@@ -102,17 +102,20 @@ def enviar_para_impressora(texto_para_imprimir, nome_documento="Comanda"):
 # --- IMAGEM DE FUNDO E CONEXÃO COM BANCO (sem alterações) ---
 page_bg_img = """
 <style>
+/* --- Estilo Padrão para Telas Largas (Desktop) --- */
 [data-testid="stAppViewContainer"] {
     background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true");
-    
-    /* Largura se ajusta em 100% e altura se ajusta proporcionalmente */
-    background-size: 100% auto; 
-    
-    /* Alinha a imagem no centro horizontal e no topo vertical */
-    background-position: center top; 
-    
-    /* Impede que a imagem se repita caso a página seja muito longa */
-    background-repeat: no-repeat; 
+    background-size: cover;
+    background-position: center center;
+}
+
+/* --- Estilo Específico para Telas Estreitas (Celulares em pé) --- */
+@media (max-width: 768px) {
+    [data-testid="stAppViewContainer"] {
+        /* COLOQUE AQUI A URL DA SUA NOVA IMAGEM VERTICAL */
+        background-image: url("URL_DA_SUA_IMAGEM_VERTICAL.jpg");
+        background-size: cover; /* Ou contain, dependendo da sua nova imagem */
+    }
 }
 
 [data-testid="stHeader"] {
