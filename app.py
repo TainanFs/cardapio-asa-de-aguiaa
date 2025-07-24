@@ -159,6 +159,10 @@ def check_login(username, password):
 
 ### ALTERAÇÃO PRINCIPAL: LÓGICA DE IMPRESSÃO MOVIDA PARA CÁ ###
 def render_order_placement_screen(db, products, options):
+    st.write("\n")
+    st.write("\n")
+    st.write("\n")
+    st.write("\n")
     st.title(f"🤵- {st.session_state.get('username')}")
     # ... (toda a lógica de seleção de itens permanece a mesma) ...
     tipo_comanda = st.radio("Tipo de Comanda:", ["Mesa", "Cliente"], horizontal=True, key="tipo_comanda_launcher")
