@@ -103,15 +103,24 @@ def enviar_para_impressora(texto_para_imprimir, nome_documento="Comanda"):
 page_bg_img = """
 <style>
 [data-testid="stAppViewContainer"] {
-background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true");
-background-size: cover;
+    background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true");
+    
+    /* Largura se ajusta em 100% e altura se ajusta proporcionalmente */
+    background-size: 100% auto; 
+    
+    /* Alinha a imagem no centro horizontal e no topo vertical */
+    background-position: center top; 
+    
+    /* Impede que a imagem se repita caso a página seja muito longa */
+    background-repeat: no-repeat; 
 }
+
 [data-testid="stHeader"] {
-background-color: rgba(0, 0, 0, 0);
+    background-color: rgba(0, 0, 0, 0);
 }
 </style>
 """
-st.markdown(page_bg_img,unsafe_allow_html=True)
+st.markdown(page_bg_img, unsafe_allow_html=True)
 
 try:
     if hasattr(st, 'secrets') and "firestore_credentials" in st.secrets:
