@@ -312,6 +312,7 @@ def render_order_placement_screen(db, products, options):
 # --- LÓGICA PRINCIPAL DA APLICAÇÃO (sem alterações) ---
 if not st.session_state.get('logged_in', False):
     # ... (código de login sem alterações) ...
+   st.title("🔥 Cardápio Asa de Águia - Login")
    st.write("\n")
    st.write("\n")
     with st.form("login_form"):
