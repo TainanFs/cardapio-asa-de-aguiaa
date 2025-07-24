@@ -585,33 +585,70 @@ else:
     
     # PAINEL DA COZINHA (sem alterações)
     elif st.session_state.get('role') == 'cozinha':
-        # ... (código da cozinha omitido, sem alterações) ...
-        st.title("📈 Relatório de Pedidos do Dia")
+        st.title("🔎 Histórico de Vendas da Cozinha")
+
+        # --- 1. SELETOR DE DATA ---
+        opcoes_data = ("Hoje", "Ontem", "Anteontem")
+        data_selecionada_str = st.radio(
+            "Selecione o dia para o relatório:",
+            opcoes_data,
+            horizontal=True,
+            key="date_selector_cozinha"
+        )
+
+        st.write("---")
+
+        # --- 2. LÓGICA PARA CALCULAR O INTERVALO DE DATA ---
+        hoje = datetime.now().date()
+        if data_selecionada_str == "Hoje":
+            data_alvo = hoje
+        elif data_selecionada_str == "Ontem":
+            data_alvo = hoje - timedelta(days=1)
+        else:  # Anteontem
+            data_alvo = hoje - timedelta(days=2)
+            
+        # Definimos o início do dia selecionado e o início do dia seguinte
+        start_of_day_dt = datetime.combine(data_alvo, time.min)
+        start_of_next_day_dt = datetime.combine(data_alvo + timedelta(days=1), time.min)
+
         try:
-            today = datetime.now().date()
-            start_of_day = datetime.combine(today, time.min)
-            pedidos_ref = db.collection("pedidos").where(filter=FieldFilter("status", "==", "pago")).where(filter=FieldFilter("timestamp", ">=", start_of_day)).order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
-            pedidos_pagos_hoje = list(pedidos_ref)
-            if not pedidos_pagos_hoje:
-                st.success("Nenhum pedido pago registrado hoje.")
+            # --- 3. CONSULTA AO BANCO DE DADOS ATUALIZADA ---
+            pedidos_ref = db.collection("pedidos") \
+                .where(filter=FieldFilter("status", "==", "pago")) \
+                .where(filter=FieldFilter("timestamp", ">=", start_of_day_dt)) \
+                .where(filter=FieldFilter("timestamp", "<", start_of_next_day_dt)) \
+                .order_by("timestamp", direction=firestore.Query.DESCENDING) \
+                .stream()
+
+            pedidos_pagos_do_dia = list(pedidos_ref)
+            
+            # Título dinâmico que mostra a data selecionada
+            st.header(f"Relatório de {data_selecionada_str} ({data_alvo.strftime('%d/%m/%Y')})")
+
+            if not pedidos_pagos_do_dia:
+                st.success(f"Nenhum pedido pago registrado no dia {data_alvo.strftime('%d/%m/%Y')}.")
             else:
-                total_faturado = sum(p.to_dict().get('total', 0) for p in pedidos_pagos_hoje)
-                num_pedidos = len(pedidos_pagos_hoje)
-                st.metric(label="Faturamento Total do Dia", value=f"R$ {total_faturado:.2f}")
-                st.metric(label="Total de Pedidos Pagos", value=num_pedidos)
+                total_faturado = sum(p.to_dict().get('total', 0) for p in pedidos_pagos_do_dia)
+                num_pedidos = len(pedidos_pagos_do_dia)
+                
+                col1, col2 = st.columns(2)
+                col1.metric(label="Faturamento Total do Dia", value=f"R$ {total_faturado:.2f}")
+                col2.metric(label="Total de Pedidos Pagos", value=num_pedidos)
+                
                 st.write("---")
-                st.subheader("Lista de Pedidos Pagos Hoje")
-                for pedido_doc in pedidos_pagos_hoje:
+                st.subheader("Lista de Pedidos Pagos")
+                for pedido_doc in pedidos_pagos_do_dia:
                     pedido = pedido_doc.to_dict()
                     identificador_label = f"**{pedido.get('identificador')}**"
+                    # Verifica se o timestamp não é nulo antes de formatar
                     horario = pedido.get('timestamp').strftime('%H:%M:%S') if pedido.get('timestamp') else 'N/A'
+                    
                     with st.expander(f"{identificador_label} às {horario} - Total: R$ {pedido.get('total', 0):.2f}"):
                         for item in pedido.get('itens', []):
                             st.write(f" - {item.get('quantidade')}x **{item['nome']}**")
                             if item.get('obs'):
                                 st.info(f"   > Obs: {item['obs']}")
+
         except Exception as e:
             st.error(f"Ocorreu um erro ao gerar o relatório: {e}")
-            st.warning("Se o erro mencionar um 'índice', por favor, clique no link na mensagem de erro para criá-lo no Firebase e tente novamente.")
-    else:
-        st.error("Seu cargo não foi reconhecido ou sem painel definido.")
+            st.warning("Se o erro mencionar um 'índice', por favor, clique no link na mensagem de erro para criá-lo no Firebase e tente novamente. Isso pode ser necessário devido à nova consulta de data.")
