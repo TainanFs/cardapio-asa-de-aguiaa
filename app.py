@@ -315,7 +315,7 @@ if not st.session_state.get('logged_in', False):
    st.title("🔥 Cardápio Asa de Águia - Login")
    st.write("\n")
    st.write("\n")
-    with st.form("login_form"):
+with st.form("login_form"):
         username = st.text_input("Nome de Usuário")
         password = st.text_input("Senha", type="password")
         login_button = st.form_submit_button("Entrar", type="primary")
