@@ -105,29 +105,30 @@ page_bg_img = """
 /* --- ESTILO PADRÃO (Para telas largas como PC e tablet deitado) --- */
 [data-testid="stAppViewContainer"] {
     background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true");
-    background-size: cover; /* Cobre a tela inteira, perfeito para o formato paisagem */
+    background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
 }
 
-/* --- CÓDIGO INTELIGENTE (Ativado apenas em telas com largura máxima de 768px) --- */
+/* --- CÓDIGO INTELIGENTE (Apenas para telas com largura máxima de 768px) --- */
 @media (max-width: 768px) {
     [data-testid="stAppViewContainer"] {
-        /* Aqui definimos o estilo SÓ para celulares em pé */
         background-image: url("https://github.com/TainanFs/cardapio-asa-de-aguiaa/blob/main/background.jpg?raw=true") !important;
-        
-        /* Deixa o logo um pouco maior que a tela para dar destaque */
         background-size: 120% auto !important; 
-        
-        /* Alinha no centro horizontal e 40px abaixo do topo */
         background-position: center 40px !important; 
     }
 }
 
-
 /* --- Estilos que valem para ambas as telas --- */
 [data-testid="stHeader"] {
     background-color: rgba(0, 0, 0, 0);
+}
+
+/* --- NOVO CÓDIGO PARA CENTRALIZAR O CONTEÚDO --- */
+[data-testid="stAppViewContainer"] > .main {
+    display: flex; /* Ativa o modo Flexbox */
+    flex-direction: column; /* Organiza os itens em coluna (um abaixo do outro) */
+    justify-content: center; /* Centraliza o conteúdo verticalmente */
 }
 </style>
 """
